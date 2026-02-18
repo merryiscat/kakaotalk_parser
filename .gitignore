@@ -54,6 +54,7 @@ reference/
 
 # Claude Code
 .claude/
+*.bak
 
 # OS
 Thumbs.db

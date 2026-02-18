@@ -1,113 +1,130 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
-import '../providers/digest_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../models/daily_digest.dart';
 
-class DigestScreen extends ConsumerStatefulWidget {
+/// AI 요약 상세 화면
+/// 특정 날짜의 이미 완료된 요약 목록을 표시합니다.
+/// LLM 호출 없이 기존 데이터만 렌더링합니다.
+class DigestScreen extends StatelessWidget {
   final DateTime date;
-  final String roomName;
+  final List<DailyDigest> digests;
 
-  const DigestScreen({super.key, required this.date, required this.roomName});
-
-  @override
-  ConsumerState<DigestScreen> createState() => _DigestScreenState();
-}
-
-class _DigestScreenState extends ConsumerState<DigestScreen> {
-  @override
-  void initState() {
-    super.initState();
-    Future.microtask(() {
-      ref.read(digestProvider.notifier).generateDigest(widget.date);
-    });
-  }
+  const DigestScreen({
+    super.key,
+    required this.date,
+    required this.digests,
+  });
 
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('yyyy년 M월 d일 (E)', 'ko');
-    final state = ref.watch(digestProvider);
-    final digest = state.digests[widget.date];
-    final isLoading = state.loadingDates.contains(widget.date);
-    final error = state.errors[widget.date];
 
     return Scaffold(
-      appBar: AppBar(title: Text(dateFormat.format(widget.date))),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: _buildBody(context, digest?.summary, digest?.topics, isLoading, error),
-      ),
+      appBar: AppBar(title: Text(dateFormat.format(date))),
+      body: digests.isEmpty
+          ? const Center(child: Text('요약 데이터가 없습니다.'))
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: digests.length,
+              itemBuilder: (context, index) {
+                final digest = digests[index];
+                return _buildDigestCard(context, digest);
+              },
+            ),
     );
   }
 
-  Widget _buildBody(
-    BuildContext context,
-    String? summary,
-    List<String>? topics,
-    bool isLoading,
-    String? error,
-  ) {
-    if (isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('AI가 대화를 요약하고 있습니다...'),
-          ],
-        ),
-      );
-    }
-
-    if (error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(error, textAlign: TextAlign.center),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: () => ref.read(digestProvider.notifier).generateDigest(widget.date),
-              icon: const Icon(Icons.refresh),
-              label: const Text('다시 시도'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (summary == null) {
-      return const Center(child: Text('요약을 생성할 수 없습니다.'));
-    }
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (topics != null && topics.isNotEmpty) ...[
-            Text('주요 주제', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: topics.map((t) => Chip(label: Text(t))).toList(),
-            ),
-            const SizedBox(height: 24),
-          ],
-          Text('요약', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: SelectableText(
-                summary,
-                style: Theme.of(context).textTheme.bodyLarge,
+  /// 개별 요약 카드 위젯
+  Widget _buildDigestCard(BuildContext context, DailyDigest digest) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 채팅방 이름 + 메시지 수
+              Row(
+                children: [
+                  Icon(
+                    Icons.chat,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      digest.roomName,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ),
+                  Text(
+                    '${digest.messageCount}개 메시지',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
               ),
-            ),
+
+              // 주요 주제 칩
+              if (digest.topics.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text('주요 주제',
+                    style: Theme.of(context).textTheme.labelMedium),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: digest.topics
+                      .map((t) => Chip(
+                            label: Text(t,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onTertiaryContainer,
+                              ),
+                            ),
+                            backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+                            side: BorderSide.none,
+                          ))
+                      .toList(),
+                ),
+              ],
+
+              // 요약 본문 — 마크다운 렌더링 + URL 클릭 가능
+              const SizedBox(height: 12),
+              MarkdownBody(
+                data: digest.summary,
+                selectable: true,
+                // URL 클릭 시 브라우저에서 열기
+                onTapLink: (text, href, title) {
+                  if (href != null) {
+                    launchUrl(
+                      Uri.parse(href),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  }
+                },
+                // 마크다운 스타일을 앱 테마에 맞춤
+                styleSheet: MarkdownStyleSheet(
+                  h2: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                  p: Theme.of(context).textTheme.bodyLarge,
+                  listBullet: Theme.of(context).textTheme.bodyLarge,
+                  a: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

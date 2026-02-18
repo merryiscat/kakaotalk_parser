@@ -30,11 +30,19 @@ class SettingsState {
 }
 
 class SettingsNotifier extends Notifier<SettingsState> {
+  /// SharedPreferences 로딩 완료를 보장하는 Future
+  /// - 다른 provider에서 await ensureLoaded()로 호출
+  late final Future<void> _initialized;
+
   @override
   SettingsState build() {
-    _loadFromPrefs();
+    _initialized = _loadFromPrefs();
     return const SettingsState();
   }
+
+  /// SharedPreferences 로딩이 완료될 때까지 대기
+  /// - uploadAndDigest 등에서 API 키를 읽기 전에 호출해야 함
+  Future<void> ensureLoaded() => _initialized;
 
   Future<void> _loadFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();

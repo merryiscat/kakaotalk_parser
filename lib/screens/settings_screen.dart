@@ -2,12 +2,55 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_provider.dart';
 
-class SettingsScreen extends ConsumerWidget {
+/// ConsumerStatefulWidget으로 변경:
+/// TextEditingController를 위젯 수명 동안 유지하고,
+/// 화면을 벗어날 때 자동으로 API 키를 저장하기 위함
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  /// API 키 입력 컨트롤러 (위젯 수명 동안 유지)
+  late TextEditingController _apiKeyController;
+
+  @override
+  void initState() {
+    super.initState();
+    // 현재 저장된 API 키로 초기화
+    _apiKeyController = TextEditingController(
+      text: ref.read(settingsProvider).apiKey,
+    );
+  }
+
+  @override
+  void dispose() {
+    // 화면을 떠날 때 입력 중이던 키를 자동 저장
+    _saveApiKey();
+    _apiKeyController.dispose();
+    super.dispose();
+  }
+
+  /// API 키를 provider에 저장
+  void _saveApiKey() {
+    final currentText = _apiKeyController.text.trim();
+    final savedKey = ref.read(settingsProvider).apiKey;
+    // 변경된 경우에만 저장 (불필요한 쓰기 방지)
+    if (currentText != savedKey) {
+      ref.read(settingsProvider.notifier).setApiKey(currentText);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+
+    // provider 변경(예: 다른 LLM 선택)으로 키가 바뀌면 컨트롤러도 동기화
+    if (_apiKeyController.text != settings.apiKey) {
+      _apiKeyController.text = settings.apiKey;
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('설정')),
@@ -24,6 +67,8 @@ class SettingsScreen extends ConsumerWidget {
             ],
             selected: {settings.provider},
             onSelectionChanged: (selected) {
+              // provider 변경 전 현재 키 저장
+              _saveApiKey();
               ref.read(settingsProvider.notifier).setProvider(selected.first);
             },
           ),
@@ -31,14 +76,26 @@ class SettingsScreen extends ConsumerWidget {
           Text('API 키', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           TextField(
-            controller: TextEditingController(text: settings.apiKey),
+            controller: _apiKeyController,
             obscureText: true,
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
               hintText: '${settings.provider.label} API 키를 입력하세요',
+              // 저장 버튼을 필드 안에 배치
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.save),
+                tooltip: 'API 키 저장',
+                onPressed: () {
+                  _saveApiKey();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('API 키가 저장되었습니다')),
+                  );
+                },
+              ),
             ),
+            // Enter 키로도 저장 가능
             onSubmitted: (value) {
-              ref.read(settingsProvider.notifier).setApiKey(value);
+              _saveApiKey();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('API 키가 저장되었습니다')),
               );
@@ -47,7 +104,44 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             _getApiKeyHint(settings.provider),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 32),
+          const Divider(),
+          const SizedBox(height: 16),
+          // ── 앱 정보 & 라이센스 ──
+          Text('앱 정보', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 12),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('톡비서'),
+            subtitle: Text(
+              'v0.1.0',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            contentPadding: EdgeInsets.zero,
+          ),
+          ListTile(
+            leading: const Icon(Icons.description_outlined),
+            title: const Text('라이센스'),
+            subtitle: Text(
+              'MIT License © 2026 merryiscat',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            contentPadding: EdgeInsets.zero,
+            // Flutter 기본 제공 라이센스 페이지 열기
+            onTap: () => showLicensePage(
+              context: context,
+              applicationName: '톡비서',
+              applicationVersion: 'v0.1.0',
+              applicationLegalese: '© 2026 merryiscat\nMIT License',
+            ),
           ),
         ],
       ),

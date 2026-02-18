@@ -7,7 +7,7 @@ void main() {
     await tester.pumpWidget(
       const ProviderScope(child: KakaoTalkParserApp()),
     );
-    expect(find.text('카톡 다이제스트'), findsOneWidget);
+    expect(find.text('톡비서'), findsOneWidget);
     expect(find.text('파일 불러오기'), findsOneWidget);
   });
 }
