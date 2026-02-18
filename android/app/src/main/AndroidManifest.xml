@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 인터넷 권한: API 호출(LLM 요약) 및 URL 메타데이터 수집에 필요 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="kakaotalk_parser"
         android:name="${applicationName}"
