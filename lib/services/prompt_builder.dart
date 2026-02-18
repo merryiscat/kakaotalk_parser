@@ -81,7 +81,7 @@ class PromptBuilder {
   /// [maxChars] 초과 시 앞부분(오래된 메시지)부터 잘라냄
   static String buildUserPromptWithLimit(
     List<ChatMessage> messages, {
-    int maxChars = 30000,
+    int maxChars = 15000,
   }) {
     final fullPrompt = buildUserPrompt(messages);
 

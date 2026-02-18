@@ -13,7 +13,7 @@ class OpenaiService implements LlmService {
 
   OpenaiService({
     required this.apiKey,
-    this.timeout = const Duration(seconds: 30),
+    this.timeout = const Duration(seconds: 90),
   });
 
   static const _endpoint = 'https://api.openai.com/v1/chat/completions';

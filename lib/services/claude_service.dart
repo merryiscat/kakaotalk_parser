@@ -13,7 +13,7 @@ class ClaudeService implements LlmService {
 
   ClaudeService({
     required this.apiKey,
-    this.timeout = const Duration(seconds: 30),
+    this.timeout = const Duration(seconds: 90),
   });
 
   static const _endpoint = 'https://api.anthropic.com/v1/messages';

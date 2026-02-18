@@ -13,7 +13,7 @@ class GeminiService implements LlmService {
 
   GeminiService({
     required this.apiKey,
-    this.timeout = const Duration(seconds: 30),
+    this.timeout = const Duration(seconds: 90),
   });
 
   static const _model = 'gemini-2.0-flash';
