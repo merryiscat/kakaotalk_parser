@@ -20,7 +20,7 @@ class ClaudeService implements LlmService {
   static const _model = 'claude-sonnet-4-5-20250929';
 
   @override
-  Future<String> summarize(
+  Future<LlmResult> summarize(
     List<ChatMessage> messages, {
     Map<String, String> urlTitles = const {},
   }) async {
@@ -52,7 +52,18 @@ class ClaudeService implements LlmService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final content = data['content'] as List<dynamic>;
-        return content[0]['text'] as String;
+        final text = content[0]['text'] as String;
+
+        // 토큰 사용량 추출: usage.input_tokens, usage.output_tokens
+        final usage = data['usage'] as Map<String, dynamic>?;
+        final inputTokens = usage?['input_tokens'] as int? ?? 0;
+        final outputTokens = usage?['output_tokens'] as int? ?? 0;
+
+        return LlmResult(
+          text: text,
+          inputTokens: inputTokens,
+          outputTokens: outputTokens,
+        );
       }
 
       throw LlmException(

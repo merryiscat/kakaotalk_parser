@@ -22,7 +22,7 @@ class GeminiService implements LlmService {
       'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$apiKey';
 
   @override
-  Future<String> summarize(
+  Future<LlmResult> summarize(
     List<ChatMessage> messages, {
     Map<String, String> urlTitles = const {},
   }) async {
@@ -60,7 +60,18 @@ class GeminiService implements LlmService {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final candidates = data['candidates'] as List<dynamic>;
         final parts = candidates[0]['content']['parts'] as List<dynamic>;
-        return parts[0]['text'] as String;
+        final text = parts[0]['text'] as String;
+
+        // 토큰 사용량 추출: usageMetadata.promptTokenCount, candidatesTokenCount
+        final usage = data['usageMetadata'] as Map<String, dynamic>?;
+        final inputTokens = usage?['promptTokenCount'] as int? ?? 0;
+        final outputTokens = usage?['candidatesTokenCount'] as int? ?? 0;
+
+        return LlmResult(
+          text: text,
+          inputTokens: inputTokens,
+          outputTokens: outputTokens,
+        );
       }
 
       throw LlmException(

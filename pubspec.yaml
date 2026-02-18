@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.3+4
+version: 1.0.4+5
 
 environment:
   sdk: ^3.11.0
@@ -86,16 +86,9 @@ flutter:
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
 
-  # Pretendard 폰트 (v1.3.9, SIL Open Font License)
-  # https://github.com/orioncactus/pretendard
+  # 배달의민족 주아체 (무료 폰트, 상업적 이용 가능)
+  # https://www.woowahan.com/#/fonts
   fonts:
-    - family: Pretendard
+    - family: BMJUA
       fonts:
-        - asset: assets/fonts/Pretendard-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/Pretendard-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Pretendard-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/Pretendard-Bold.ttf
-          weight: 700
+        - asset: assets/fonts/BMJUA.ttf

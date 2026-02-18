@@ -17,10 +17,10 @@ class OpenaiService implements LlmService {
   });
 
   static const _endpoint = 'https://api.openai.com/v1/chat/completions';
-  static const _model = 'gpt-4o-mini';
+  static const _model = 'gpt-4.1-mini';
 
   @override
-  Future<String> summarize(
+  Future<LlmResult> summarize(
     List<ChatMessage> messages, {
     Map<String, String> urlTitles = const {},
   }) async {
@@ -51,7 +51,18 @@ class OpenaiService implements LlmService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final choices = data['choices'] as List<dynamic>;
-        return choices[0]['message']['content'] as String;
+        final text = choices[0]['message']['content'] as String;
+
+        // 토큰 사용량 추출: usage.prompt_tokens, usage.completion_tokens
+        final usage = data['usage'] as Map<String, dynamic>?;
+        final inputTokens = usage?['prompt_tokens'] as int? ?? 0;
+        final outputTokens = usage?['completion_tokens'] as int? ?? 0;
+
+        return LlmResult(
+          text: text,
+          inputTokens: inputTokens,
+          outputTokens: outputTokens,
+        );
       }
 
       throw LlmException(

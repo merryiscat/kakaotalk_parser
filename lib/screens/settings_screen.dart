@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/digest_provider.dart';
 import '../providers/settings_provider.dart';
 
 /// ConsumerStatefulWidget으로 변경:
@@ -108,6 +109,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: 16),
+          // ── 사용 모델 및 토큰 사용량 기반 비용 ──
+          _buildUsageCard(context, settings.provider),
           const SizedBox(height: 32),
           const Divider(),
           const SizedBox(height: 16),
@@ -118,7 +122,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             leading: const Icon(Icons.info_outline),
             title: const Text('톡비서'),
             subtitle: Text(
-              'v0.1.0',
+              'v1.0.4',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -154,5 +158,102 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       LlmProvider.openai => 'OpenAI 플랫폼에서 API 키를 발급받으세요',
       LlmProvider.gemini => 'Google AI Studio에서 API 키를 발급받으세요',
     };
+  }
+
+  /// 토큰 사용량 기반 비용 계산 카드
+  Widget _buildUsageCard(BuildContext context, LlmProvider provider) {
+    final digestState = ref.watch(digestProvider);
+    final inputTokens = digestState.totalInputTokens;
+    final outputTokens = digestState.totalOutputTokens;
+
+    // 각 LLM별 1M 토큰당 가격 (USD)
+    final (String model, double inputPrice, double outputPrice) =
+        switch (provider) {
+      LlmProvider.claude => ('claude-sonnet-4-5-20250929', 3.0, 15.0),
+      LlmProvider.openai => ('gpt-4.1-mini', 0.4, 1.6),
+      LlmProvider.gemini => ('gemini-2.0-flash', 0.1, 0.4),
+    };
+
+    // 비용 계산: 토큰 수 / 1,000,000 × 단가
+    final inputCost = inputTokens / 1000000 * inputPrice;
+    final outputCost = outputTokens / 1000000 * outputPrice;
+    final totalCost = inputCost + outputCost;
+
+    return Card(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.paid_outlined,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text('API 사용량',
+                    style: Theme.of(context).textTheme.labelLarge),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '모델: $model',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            // 토큰 사용량이 0이면 안내 메시지
+            if (inputTokens == 0 && outputTokens == 0)
+              Text(
+                '아직 사용 내역이 없습니다. 요약을 실행하면 여기에 표시됩니다.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              )
+            else ...[
+              Text(
+                '입력: ${_formatTokens(inputTokens)} 토큰 (\$${inputCost.toStringAsFixed(4)})\n'
+                '출력: ${_formatTokens(outputTokens)} 토큰 (\$${outputCost.toStringAsFixed(4)})',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '예상 비용: \$${totalCost.toStringAsFixed(4)} (약 ₩${(totalCost * 1450).toStringAsFixed(0)})',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+            const SizedBox(height: 4),
+            Text(
+              '단가: 입력 \$$inputPrice / 출력 \$$outputPrice (1M 토큰)',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant
+                        .withValues(alpha: 0.7),
+                    fontSize: 11,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 토큰 수를 읽기 쉽게 포맷 (1,234 → "1,234")
+  String _formatTokens(int tokens) {
+    if (tokens < 1000) return '$tokens';
+    final str = tokens.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) buffer.write(',');
+      buffer.write(str[i]);
+    }
+    return buffer.toString();
   }
 }

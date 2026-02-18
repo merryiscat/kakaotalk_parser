@@ -15,7 +15,7 @@ class KakaoTalkParserApp extends StatelessWidget {
     return MaterialApp(
       title: '톡비서',
       theme: ThemeData(
-        fontFamily: 'Pretendard',
+        fontFamily: 'BMJUA',
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1565C0), // 딥 블루 (톤온톤 기준색)
           brightness: Brightness.light,
@@ -29,7 +29,7 @@ class KakaoTalkParserApp extends StatelessWidget {
         useMaterial3: true,
       ),
       darkTheme: ThemeData(
-        fontFamily: 'Pretendard',
+        fontFamily: 'BMJUA',
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1565C0),
           brightness: Brightness.dark,

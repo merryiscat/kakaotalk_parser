@@ -39,6 +39,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           // ── 달력 위젯 ──
           TableCalendar(
             locale: 'ko_KR',
+            // 월요일부터 시작
+            startingDayOfWeek: StartingDayOfWeek.monday,
             firstDay: firstDay,
             lastDay: lastDay,
             focusedDay: _focusedDay,

@@ -30,12 +30,18 @@ class DigestState {
   /// 에러 메시지 (파일 파싱 실패, API 오류 등)
   final String? error;
 
+  /// 누적 토큰 사용량 (API 비용 계산용)
+  final int totalInputTokens;
+  final int totalOutputTokens;
+
   const DigestState({
     this.roomNames = const [],
     this.digests = const {},
     this.isProcessing = false,
     this.processingProgress,
     this.error,
+    this.totalInputTokens = 0,
+    this.totalOutputTokens = 0,
   });
 
   DigestState copyWith({
@@ -48,6 +54,8 @@ class DigestState {
     String? error,
     // null로 설정하려면 clearError: true 사용
     bool clearError = false,
+    int? totalInputTokens,
+    int? totalOutputTokens,
   }) {
     return DigestState(
       roomNames: roomNames ?? this.roomNames,
@@ -56,6 +64,8 @@ class DigestState {
       processingProgress:
           clearProgress ? null : (processingProgress ?? this.processingProgress),
       error: clearError ? null : (error ?? this.error),
+      totalInputTokens: totalInputTokens ?? this.totalInputTokens,
+      totalOutputTokens: totalOutputTokens ?? this.totalOutputTokens,
     );
   }
 }
@@ -209,11 +219,18 @@ class DigestNotifier extends Notifier<DigestState> {
           final urlTitles = await UrlMetadataService.fetchTitles(urls);
 
           // AI 요약 호출 (URL 제목 정보 포함)
-          final summary = await llmService.summarize(
+          final result = await llmService.summarize(
             messages,
             urlTitles: urlTitles,
           );
+          final summary = result.text;
           final topics = _extractTopics(summary);
+
+          // 토큰 사용량 누적
+          state = state.copyWith(
+            totalInputTokens: state.totalInputTokens + result.inputTokens,
+            totalOutputTokens: state.totalOutputTokens + result.outputTokens,
+          );
 
           final digest = DailyDigest(
             date: date,
