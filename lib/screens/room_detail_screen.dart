@@ -76,7 +76,10 @@ class RoomDetailScreen extends ConsumerWidget {
           child: digests.isEmpty
               ? _buildEmptyState(context)
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  // FAB과 시스템 네비게이션 바에 가려지지 않도록 하단 여유 확보
+                  padding: const EdgeInsets.only(
+                    left: 16, right: 16, top: 16, bottom: 80,
+                  ),
                   itemCount: digests.length,
                   itemBuilder: (context, index) {
                     final digest = digests[index];

@@ -29,7 +29,7 @@ class ClaudeService implements LlmService {
 
     final body = jsonEncode({
       'model': _model,
-      'max_tokens': 1024,
+      'max_tokens': 16384,
       'system': systemPrompt,
       'messages': [
         {'role': 'user', 'content': userPrompt},

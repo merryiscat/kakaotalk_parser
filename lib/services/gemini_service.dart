@@ -43,7 +43,7 @@ class GeminiService implements LlmService {
         },
       ],
       'generationConfig': {
-        'maxOutputTokens': 1024,
+        'maxOutputTokens': 8192,
       },
     });
 

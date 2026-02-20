@@ -26,7 +26,13 @@ class DigestScreen extends StatelessWidget {
       body: digests.isEmpty
           ? const Center(child: Text('요약 데이터가 없습니다.'))
           : ListView.builder(
-              padding: const EdgeInsets.all(16),
+              // 하단에 시스템 네비게이션 바 높이만큼 여유 공간 확보
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: 16 + MediaQuery.of(context).padding.bottom,
+              ),
               itemCount: digests.length,
               itemBuilder: (context, index) {
                 final digest = digests[index];

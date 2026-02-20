@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/daily_digest.dart';
 import '../parser/kakaotalk_parser.dart';
@@ -8,6 +10,7 @@ import '../services/llm_service.dart';
 import '../services/claude_service.dart';
 import '../services/openai_service.dart';
 import '../services/gemini_service.dart';
+import '../services/storage_service.dart';
 import '../services/url_metadata_service.dart';
 
 /// ──────────────────────────────────────────────
@@ -77,6 +80,31 @@ class DigestNotifier extends Notifier<DigestState> {
   @override
   DigestState build() => const DigestState();
 
+  /// ── 앱 시작 시 저장된 데이터 불러오기 ──
+  /// main.dart에서 앱 초기화 직후 호출하여 이전 요약 복원
+  Future<void> loadSavedData() async {
+    final saved = await StorageService.load();
+    if (saved != null) {
+      state = DigestState(
+        roomNames: saved.roomNames,
+        digests: saved.digests,
+        totalInputTokens: saved.totalInputTokens,
+        totalOutputTokens: saved.totalOutputTokens,
+      );
+    }
+  }
+
+  /// ── 현재 상태를 JSON 파일로 저장 ──
+  /// 상태가 변경될 때마다 호출하여 데이터 유실 방지
+  Future<void> _saveState() async {
+    await StorageService.save(
+      roomNames: state.roomNames,
+      digests: state.digests,
+      totalInputTokens: state.totalInputTokens,
+      totalOutputTokens: state.totalOutputTokens,
+    );
+  }
+
   /// ── 빈 방 추가: 리스트에 이름만 등록 ──
   void addRoom(String name) {
     // 이미 존재하는 이름이면 무시
@@ -84,6 +112,7 @@ class DigestNotifier extends Notifier<DigestState> {
     state = state.copyWith(
       roomNames: [...state.roomNames, name],
     );
+    _saveState(); // 방 추가 후 저장
   }
 
   /// ── 방 이름 수정: roomNames + digests 키/roomName 모두 갱신 ──
@@ -118,6 +147,7 @@ class DigestNotifier extends Notifier<DigestState> {
       roomNames: updatedNames,
       digests: updatedDigests,
     );
+    _saveState(); // 이름 변경 후 저장
   }
 
   /// ── 핵심 메서드: 파일 업로드 → 파싱 → 자동 요약 ──
@@ -125,9 +155,10 @@ class DigestNotifier extends Notifier<DigestState> {
   /// 1. FilePicker로 파일 선택
   /// 2. KakaotalkParser.parse() → ChatRoom (임시)
   /// 3. groupByDate() → 날짜별 메시지
-  /// 4. 중복 감지: 이미 요약된 날짜는 스킵 (토큰 절약)
-  /// 5. 새 날짜만 LLM 순차 호출 → DailyDigest 생성 → 즉시 state 반영
-  /// 6. ChatRoom은 scope 벗어나면 GC 처리
+  /// 4. 오늘 날짜 제외 (아직 대화가 진행 중일 수 있으므로)
+  /// 5. 중복 감지: 이미 요약된 날짜는 스킵 (토큰 절약)
+  /// 6. 새 날짜만 LLM 순차 호출 → DailyDigest 생성 → 즉시 state 반영
+  /// 7. ChatRoom은 scope 벗어나면 GC 처리
   Future<void> uploadAndDigest(String roomName) async {
     // 파일 선택 다이얼로그 (카카오톡 내보내기 기본 경로)
     final result = await FilePicker.platform.pickFiles(
@@ -146,6 +177,11 @@ class DigestNotifier extends Notifier<DigestState> {
       clearProgress: true,
     );
 
+    // Android에서만 Foreground Service 시작 (백그라운드 전환 시에도 API 호출 유지)
+    if (!kIsWeb && Platform.isAndroid) {
+      await _startForegroundService();
+    }
+
     try {
       // 1. 파일 읽기 + 파싱 → ChatRoom (임시 객체)
       final file = File(result.files.single.path!);
@@ -154,9 +190,17 @@ class DigestNotifier extends Notifier<DigestState> {
 
       // 2. 날짜별 메시지 그룹핑
       final grouped = chatRoom.groupByDate();
-      final dates = grouped.keys.toList()..sort();
 
-      // 3. 중복 감지: 이미 요약된 날짜는 제외
+      // 3. 오늘 날짜 제외 — 아직 대화가 진행 중일 수 있어 불완전한 요약이 됨
+      //    내일이 되면 오늘 날짜가 완성되어 정상 요약 가능
+      final today = DateTime.now();
+      final todayOnly = DateTime(today.year, today.month, today.day);
+      final dates = grouped.keys
+          .where((d) => d.isBefore(todayOnly))
+          .toList()
+        ..sort();
+
+      // 4. 중복 감지: 이미 요약된 날짜는 제외
       final newDates = <DateTime>[];
       for (final date in dates) {
         final key =
@@ -175,7 +219,7 @@ class DigestNotifier extends Notifier<DigestState> {
         return;
       }
 
-      // 4. 설정에서 API 키 확인 (SharedPreferences 로딩 완료 보장)
+      // 5. 설정에서 API 키 확인 (SharedPreferences 로딩 완료 보장)
       await ref.read(settingsProvider.notifier).ensureLoaded();
       final settings = ref.read(settingsProvider);
       if (settings.apiKey.isEmpty) {
@@ -198,10 +242,11 @@ class DigestNotifier extends Notifier<DigestState> {
           clearProgress: true,
           error: 'API 키를 설정해주세요. (설정 화면에서 입력)',
         );
+        await _saveState(); // API 키 없는 상태도 저장
         return;
       }
 
-      // 5. LLM 서비스로 순차 요약
+      // 6. LLM 서비스로 순차 요약
       final llmService = _createLlmService(settings);
       final total = newDates.length;
 
@@ -245,23 +290,59 @@ class DigestNotifier extends Notifier<DigestState> {
           final updatedDigests = Map<String, DailyDigest>.from(state.digests);
           updatedDigests[digest.key] = digest;
           state = state.copyWith(digests: updatedDigests);
+
+          // 날짜 하나 완료될 때마다 저장 (중간에 앱이 죽어도 데이터 보존)
+          await _saveState();
         } catch (e) {
           // 개별 날짜 요약 실패 시 에러만 기록하고 계속 진행
           state = state.copyWith(error: '${date.month}/${date.day} 요약 실패: $e');
         }
       }
 
-      // 6. 처리 완료 (ChatRoom은 scope를 벗어나며 GC 처리)
+      // 7. 처리 완료 (ChatRoom은 scope를 벗어나며 GC 처리)
       state = state.copyWith(
         isProcessing: false,
         processingProgress: (total, total),
       );
+      await _saveState(); // 최종 상태 저장
     } catch (e) {
       state = state.copyWith(
         isProcessing: false,
         clearProgress: true,
         error: '파일을 처리할 수 없습니다: $e',
       );
+    } finally {
+      // Foreground Service 종료 (처리 완료 또는 에러 모두)
+      if (!kIsWeb && Platform.isAndroid) {
+        await _stopForegroundService();
+      }
+    }
+  }
+
+  /// ── Foreground Service 시작 ──
+  /// 알림바에 "요약 진행 중" 표시 → 화면 꺼도 OS가 앱을 중단하지 않음
+  Future<void> _startForegroundService() async {
+    try {
+      await FlutterForegroundTask.startService(
+        serviceId: 100,
+        notificationTitle: '톡비서 - 요약 진행 중',
+        notificationText: '대화 요약을 처리하고 있습니다. 잠시만 기다려주세요.',
+        callback: _foregroundTaskCallback,
+      );
+    } catch (e) {
+      // Foreground Service 시작 실패해도 요약은 계속 진행 (포그라운드에서라도)
+      debugPrint('Foreground Service 시작 실패: $e');
+    }
+  }
+
+  /// ── Foreground Service 종료 ──
+  Future<void> _stopForegroundService() async {
+    try {
+      if (await FlutterForegroundTask.isRunningService) {
+        await FlutterForegroundTask.stopService();
+      }
+    } catch (e) {
+      debugPrint('Foreground Service 종료 실패: $e');
     }
   }
 
@@ -271,6 +352,7 @@ class DigestNotifier extends Notifier<DigestState> {
     final updatedDigests = Map<String, DailyDigest>.from(state.digests)
       ..removeWhere((key, digest) => digest.roomName == roomName);
     state = state.copyWith(roomNames: updatedNames, digests: updatedDigests);
+    _saveState(); // 방 삭제 후 저장
   }
 
   /// 에러 메시지 초기화
@@ -301,6 +383,27 @@ class DigestNotifier extends Notifier<DigestState> {
     }
     return topics.take(5).toList();
   }
+}
+
+/// ── Foreground Service 콜백 ──
+/// 별도 isolate에서 실행되는 최소한의 TaskHandler
+/// 실제 요약 작업은 메인 isolate에서 진행되므로 여기서는 아무것도 하지 않음
+/// 이 콜백의 역할은 단지 OS가 앱을 백그라운드에서 중단시키지 않도록 하는 것
+@pragma('vm:entry-point')
+void _foregroundTaskCallback() {
+  FlutterForegroundTask.setTaskHandler(_MinimalTaskHandler());
+}
+
+/// 최소한의 TaskHandler — Foreground Service 유지만 담당
+class _MinimalTaskHandler extends TaskHandler {
+  @override
+  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {}
+
+  @override
+  void onRepeatEvent(DateTime timestamp) {}
+
+  @override
+  Future<void> onDestroy(DateTime timestamp) async {}
 }
 
 /// ── 메인 provider ──

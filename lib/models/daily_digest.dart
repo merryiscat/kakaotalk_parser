@@ -47,4 +47,33 @@ class DailyDigest {
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     return '${roomName}_$dateStr';
   }
+
+  /// JSON으로 변환 — 앱 종료 후에도 요약을 유지하기 위해 파일에 저장할 때 사용
+  Map<String, dynamic> toJson() {
+    return {
+      'date': date.toIso8601String(),
+      'summary': summary,
+      'roomName': roomName,
+      'topics': topics,
+      'messageCount': messageCount,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
+  /// JSON에서 복원 — 앱 시작 시 저장된 요약을 다시 불러올 때 사용
+  factory DailyDigest.fromJson(Map<String, dynamic> json) {
+    return DailyDigest(
+      date: DateTime.parse(json['date'] as String),
+      summary: json['summary'] as String,
+      roomName: json['roomName'] as String,
+      topics: (json['topics'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      messageCount: json['messageCount'] as int? ?? 0,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+    );
+  }
 }

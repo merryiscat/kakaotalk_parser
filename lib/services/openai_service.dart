@@ -29,7 +29,7 @@ class OpenaiService implements LlmService {
 
     final body = jsonEncode({
       'model': _model,
-      'max_tokens': 1024,
+      'max_tokens': 16384,
       'messages': [
         {'role': 'system', 'content': systemPrompt},
         {'role': 'user', 'content': userPrompt},

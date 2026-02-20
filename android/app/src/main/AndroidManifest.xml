@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- 인터넷 권한: API 호출(LLM 요약) 및 URL 메타데이터 수집에 필요 -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Foreground Service 권한: 화면 꺼도 요약 작업이 계속되도록 앱을 백그라운드에서 유지 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <application
         android:label="톡비서"
         android:name="${applicationName}"
@@ -27,6 +30,11 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Foreground Service: 요약 처리 중 백그라운드 유지 (서비스 이름 변경 금지) -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
