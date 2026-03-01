@@ -85,7 +85,7 @@ class RoomDetailScreen extends ConsumerWidget {
                     final digest = digests[index];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildDateCard(context, dateFormat, digest),
+                      child: _buildDateCard(context, ref, dateFormat, digest),
                     );
                   },
                 ),
@@ -141,9 +141,36 @@ class RoomDetailScreen extends ConsumerWidget {
         .trim();
   }
 
+  /// 개별 요약 삭제 확인 다이얼로그
+  void _confirmDeleteDigest(BuildContext context, WidgetRef ref, DailyDigest digest, DateFormat dateFormat) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('요약 삭제'),
+        content: Text('${dateFormat.format(digest.date)} 요약을 삭제할까요?\n삭제하면 복구할 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              // digest.key = "방이름_YYYY-MM-DD" 형태의 고유 키
+              ref.read(digestProvider.notifier).deleteDigest(digest.key);
+              Navigator.pop(ctx);
+            },
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 날짜별 카드 위젯
   Widget _buildDateCard(
     BuildContext context,
+    WidgetRef ref,
     DateFormat dateFormat,
     DailyDigest digest,
   ) {
@@ -160,6 +187,8 @@ class RoomDetailScreen extends ConsumerWidget {
             ),
           ),
         ),
+        // 길게 누르면 삭제 확인 다이얼로그
+        onLongPress: () => _confirmDeleteDigest(context, ref, digest, dateFormat),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

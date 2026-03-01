@@ -56,6 +56,13 @@ reference/
 .claude/
 *.bak
 
+# 톡비서 서버 (Python)
+tokbiseo-server/.venv/
+tokbiseo-server/__pycache__/
+tokbiseo-server/**/__pycache__/
+tokbiseo-server/.env
+tokbiseo-server/uv.lock
+
 # OS
 Thumbs.db
 Desktop.ini

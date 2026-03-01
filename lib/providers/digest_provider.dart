@@ -3,13 +3,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/chat_message.dart';
 import '../models/daily_digest.dart';
 import '../parser/kakaotalk_parser.dart';
 import '../providers/settings_provider.dart';
-import '../services/llm_service.dart';
-import '../services/claude_service.dart';
-import '../services/openai_service.dart';
-import '../services/gemini_service.dart';
+import '../services/agent_api_service.dart';
 import '../services/storage_service.dart';
 import '../services/url_metadata_service.dart';
 
@@ -219,35 +217,27 @@ class DigestNotifier extends Notifier<DigestState> {
         return;
       }
 
-      // 5. 설정에서 API 키 확인 (SharedPreferences 로딩 완료 보장)
+      // 5. 설정에서 서버 URL 확인 (SharedPreferences 로딩 완료 보장)
       await ref.read(settingsProvider.notifier).ensureLoaded();
       final settings = ref.read(settingsProvider);
-      if (settings.apiKey.isEmpty) {
-        // API 키가 없으면 메시지 정보만 저장 (요약 없이)
-        final updatedDigests = Map<String, DailyDigest>.from(state.digests);
-        for (final date in newDates) {
-          final messages = grouped[date]!;
-          final digest = DailyDigest(
-            date: date,
-            summary: 'API 키를 설정하면 AI 요약이 생성됩니다.',
-            roomName: roomName,
-            messageCount: messages.length,
-            createdAt: DateTime.now(),
-          );
-          updatedDigests[digest.key] = digest;
-        }
+
+      // 서버 URL이 없으면 요약 불가
+      if (settings.serverUrl.isEmpty) {
         state = state.copyWith(
-          digests: updatedDigests,
           isProcessing: false,
           clearProgress: true,
-          error: 'API 키를 설정해주세요. (설정 화면에서 입력)',
+          error: '서버 URL을 설정해주세요. (설정 화면에서 입력)',
         );
-        await _saveState(); // API 키 없는 상태도 저장
         return;
       }
 
-      // 6. LLM 서비스로 순차 요약
-      final llmService = _createLlmService(settings);
+      // 6. 멀티에이전트 서버 서비스 생성
+      final agentService = AgentApiService(
+        serverUrl: settings.serverUrl,
+        openaiApiKey: settings.apiKey,
+        tavilyApiKey: settings.tavilyApiKey,
+        youtubeApiKey: settings.youtubeApiKey,
+      );
       final total = newDates.length;
 
       for (var i = 0; i < newDates.length; i++) {
@@ -263,9 +253,10 @@ class DigestNotifier extends Notifier<DigestState> {
           final urls = UrlMetadataService.extractUrls(allText);
           final urlTitles = await UrlMetadataService.fetchTitles(urls);
 
-          // AI 요약 호출 (URL 제목 정보 포함)
-          final result = await llmService.summarize(
-            messages,
+          // 멀티에이전트 서버로 요약 요청
+          final messagesText = _buildMessagesText(messages);
+          final result = await agentService.summarize(
+            messagesText,
             urlTitles: urlTitles,
           );
           final summary = result.text;
@@ -355,23 +346,58 @@ class DigestNotifier extends Notifier<DigestState> {
     _saveState(); // 방 삭제 후 저장
   }
 
+  /// 개별 요약 1건 삭제 (키 형식: "방이름_YYYY-MM-DD")
+  void deleteDigest(String key) {
+    final updatedDigests = Map<String, DailyDigest>.from(state.digests)
+      ..remove(key);
+    state = state.copyWith(digests: updatedDigests);
+    _saveState(); // 삭제 후 저장
+  }
+
   /// 에러 메시지 초기화
   void clearError() {
     state = state.copyWith(clearError: true);
   }
 
-  /// LLM 서비스 생성 (설정에 따라 Claude/OpenAI/Gemini)
-  LlmService _createLlmService(SettingsState settings) {
-    return switch (settings.provider) {
-      LlmProvider.claude => ClaudeService(apiKey: settings.apiKey),
-      LlmProvider.openai => OpenaiService(apiKey: settings.apiKey),
-      LlmProvider.gemini => GeminiService(apiKey: settings.apiKey),
-    };
+  /// ChatMessage 리스트를 멀티에이전트 서버에 보낼 텍스트로 변환
+  /// 형식: "[HH:MM] 발신자: 내용" (PromptBuilder와 동일한 형식)
+  String _buildMessagesText(List<ChatMessage> messages) {
+    final buffer = StringBuffer();
+    for (final msg in messages) {
+      if (msg.type == MessageType.system ||
+          msg.type == MessageType.media ||
+          msg.type == MessageType.emoticon ||
+          msg.type == MessageType.deleted) {
+        continue;
+      }
+      final hour = msg.dateTime.hour.toString().padLeft(2, '0');
+      final minute = msg.dateTime.minute.toString().padLeft(2, '0');
+      buffer.writeln('[$hour:$minute] ${msg.sender}: ${msg.content}');
+    }
+    return buffer.toString();
   }
 
   /// 요약 텍스트에서 주요 주제 추출
-  /// "- " 또는 "* "로 시작하는 짧은 줄을 주제로 인식
+  /// "## 주제 키워드" 섹션의 쉼표 구분 키워드를 파싱
+  /// 해당 섹션이 없으면 "- " 또는 "* "로 시작하는 짧은 줄로 폴백
   List<String> _extractTopics(String summary) {
+    // 새 형식: "## 주제 키워드" 섹션에서 쉼표 구분 키워드 추출
+    final keywordMatch = RegExp(
+      r'^## 주제 키워드\s*\n(.+)',
+      multiLine: true,
+    ).firstMatch(summary);
+
+    if (keywordMatch != null) {
+      return keywordMatch
+          .group(1)!
+          .split(',')
+          .map((k) => k.trim())
+          .where((k) => k.isNotEmpty)
+          .take(5)
+          .toList();
+    }
+
+    // 폴백: 이전 형식 호환 (리스트 항목에서 추출)
     final lines = summary.split('\n');
     final topics = <String>[];
     for (final line in lines) {

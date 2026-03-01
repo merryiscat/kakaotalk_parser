@@ -1,30 +1,38 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// LLM 제공자
-enum LlmProvider {
-  claude('Claude'),
-  openai('OpenAI'),
-  gemini('Gemini');
-
-  final String label;
-  const LlmProvider(this.label);
-}
-
-/// 설정 상태
+/// 설정 상태 — 서버 URL + API 키 관리
 class SettingsState {
-  final LlmProvider provider;
+  /// OpenAI API 키 (멀티에이전트 서버에서 LLM 호출에 사용)
   final String apiKey;
 
+  /// 멀티에이전트 서버 URL (예: "http://192.168.0.10:3936")
+  final String serverUrl;
+
+  /// Tavily 웹 검색 API 키
+  final String tavilyApiKey;
+
+  /// YouTube Data API v3 키
+  final String youtubeApiKey;
+
   const SettingsState({
-    this.provider = LlmProvider.claude,
     this.apiKey = '',
+    this.serverUrl = '',
+    this.tavilyApiKey = '',
+    this.youtubeApiKey = '',
   });
 
-  SettingsState copyWith({LlmProvider? provider, String? apiKey}) {
+  SettingsState copyWith({
+    String? apiKey,
+    String? serverUrl,
+    String? tavilyApiKey,
+    String? youtubeApiKey,
+  }) {
     return SettingsState(
-      provider: provider ?? this.provider,
       apiKey: apiKey ?? this.apiKey,
+      serverUrl: serverUrl ?? this.serverUrl,
+      tavilyApiKey: tavilyApiKey ?? this.tavilyApiKey,
+      youtubeApiKey: youtubeApiKey ?? this.youtubeApiKey,
     );
   }
 }
@@ -41,33 +49,48 @@ class SettingsNotifier extends Notifier<SettingsState> {
   }
 
   /// SharedPreferences 로딩이 완료될 때까지 대기
-  /// - uploadAndDigest 등에서 API 키를 읽기 전에 호출해야 함
   Future<void> ensureLoaded() => _initialized;
 
   Future<void> _loadFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    final providerIndex = prefs.getInt('llm_provider') ?? 0;
     final apiKey = prefs.getString('api_key') ?? '';
+    final serverUrl = prefs.getString('agent_server_url') ?? '';
+    final tavilyApiKey = prefs.getString('tavily_api_key') ?? '';
+    final youtubeApiKey = prefs.getString('youtube_api_key') ?? '';
     state = SettingsState(
-      provider: LlmProvider.values[providerIndex],
       apiKey: apiKey,
+      serverUrl: serverUrl,
+      tavilyApiKey: tavilyApiKey,
+      youtubeApiKey: youtubeApiKey,
     );
   }
 
-  Future<void> setProvider(LlmProvider provider) async {
-    state = state.copyWith(provider: provider);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('llm_provider', provider.index);
-    // 제공자 변경 시 해당 제공자의 키를 로드
-    final apiKey = prefs.getString('api_key_${provider.name}') ?? '';
-    state = state.copyWith(apiKey: apiKey);
-  }
-
+  /// OpenAI API 키 저장
   Future<void> setApiKey(String apiKey) async {
     state = state.copyWith(apiKey: apiKey);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('api_key', apiKey);
-    await prefs.setString('api_key_${state.provider.name}', apiKey);
+  }
+
+  /// 멀티에이전트 서버 URL 저장
+  Future<void> setServerUrl(String url) async {
+    state = state.copyWith(serverUrl: url);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('agent_server_url', url);
+  }
+
+  /// Tavily API 키 저장
+  Future<void> setTavilyApiKey(String key) async {
+    state = state.copyWith(tavilyApiKey: key);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('tavily_api_key', key);
+  }
+
+  /// YouTube API 키 저장
+  Future<void> setYoutubeApiKey(String key) async {
+    state = state.copyWith(youtubeApiKey: key);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('youtube_api_key', key);
   }
 }
 
