@@ -31,6 +31,15 @@ class DigestState {
   /// 에러 메시지 (파일 파싱 실패, API 오류 등)
   final String? error;
 
+  /// 현재 진행 중인 노드의 한글 표시명 (예: "대화 분석", "웹 검색")
+  /// null이면 노드 정보 없음 (아직 시작 전이거나 날짜 단위 진행 중)
+  final String? currentNodeName;
+
+  /// 노드 단위 진행률: (완료된 노드 수, 전체 노드 수)
+  /// 예: (3, 8)이면 8개 노드 중 3개 완료
+  /// null이면 노드 진행률 없음
+  final (int step, int totalSteps)? nodeProgress;
+
   /// 누적 토큰 사용량 (API 비용 계산용)
   final int totalInputTokens;
   final int totalOutputTokens;
@@ -40,6 +49,8 @@ class DigestState {
     this.digests = const {},
     this.isProcessing = false,
     this.processingProgress,
+    this.currentNodeName,
+    this.nodeProgress,
     this.error,
     this.totalInputTokens = 0,
     this.totalOutputTokens = 0,
@@ -52,6 +63,10 @@ class DigestState {
     (int, int)? processingProgress,
     // null로 설정하려면 clearProgress: true 사용
     bool clearProgress = false,
+    String? currentNodeName,
+    (int, int)? nodeProgress,
+    // null로 설정하려면 clearNodeInfo: true 사용 (노드 이름 + 노드 진행률 모두 초기화)
+    bool clearNodeInfo = false,
     String? error,
     // null로 설정하려면 clearError: true 사용
     bool clearError = false,
@@ -64,6 +79,10 @@ class DigestState {
       isProcessing: isProcessing ?? this.isProcessing,
       processingProgress:
           clearProgress ? null : (processingProgress ?? this.processingProgress),
+      currentNodeName:
+          clearNodeInfo ? null : (currentNodeName ?? this.currentNodeName),
+      nodeProgress:
+          clearNodeInfo ? null : (nodeProgress ?? this.nodeProgress),
       error: clearError ? null : (error ?? this.error),
       totalInputTokens: totalInputTokens ?? this.totalInputTokens,
       totalOutputTokens: totalOutputTokens ?? this.totalOutputTokens,
@@ -168,11 +187,12 @@ class DigestNotifier extends Notifier<DigestState> {
     // 사용자가 파일 선택을 취소한 경우
     if (result == null || result.files.single.path == null) return;
 
-    // 처리 시작
+    // 처리 시작 (노드 정보도 초기화)
     state = state.copyWith(
       isProcessing: true,
       clearError: true,
       clearProgress: true,
+      clearNodeInfo: true,
     );
 
     // Android에서만 Foreground Service 시작 (백그라운드 전환 시에도 API 호출 유지)
@@ -213,6 +233,7 @@ class DigestNotifier extends Notifier<DigestState> {
         state = state.copyWith(
           isProcessing: false,
           clearProgress: true,
+          clearNodeInfo: true,
         );
         return;
       }
@@ -253,12 +274,36 @@ class DigestNotifier extends Notifier<DigestState> {
           final urls = UrlMetadataService.extractUrls(allText);
           final urlTitles = await UrlMetadataService.fetchTitles(urls);
 
-          // 멀티에이전트 서버로 요약 요청
+          // 멀티에이전트 서버로 요약 요청 (SSE 스트리밍 우선, 실패 시 기존 방식 폴백)
           final messagesText = _buildMessagesText(messages);
-          final result = await agentService.summarize(
-            messagesText,
-            urlTitles: urlTitles,
-          );
+
+          // 노드 진행률 초기화 (새 날짜 시작)
+          state = state.copyWith(clearNodeInfo: true);
+
+          LlmResult result;
+          try {
+            // SSE 스트리밍: 노드 완료마다 진행률 콜백으로 UI 갱신
+            result = await agentService.summarizeStream(
+              messagesText,
+              urlTitles: urlTitles,
+              onNodeComplete: (event) {
+                // 각 노드 완료 시 상태 업데이트 → UI에 "대화 분석 완료 (3/8)" 표시
+                state = state.copyWith(
+                  currentNodeName: event.displayName,
+                  nodeProgress: (event.step, event.totalSteps),
+                );
+              },
+            );
+          } catch (sseError) {
+            // SSE 실패 시 기존 summarize()로 폴백 (서버가 구버전일 수 있음)
+            debugPrint('SSE 스트리밍 실패, 기존 방식으로 폴백: $sseError');
+            state = state.copyWith(clearNodeInfo: true);
+            result = await agentService.summarize(
+              messagesText,
+              urlTitles: urlTitles,
+            );
+          }
+
           final summary = result.text;
           final topics = _extractTopics(summary);
 
@@ -294,12 +339,14 @@ class DigestNotifier extends Notifier<DigestState> {
       state = state.copyWith(
         isProcessing: false,
         processingProgress: (total, total),
+        clearNodeInfo: true,
       );
       await _saveState(); // 최종 상태 저장
     } catch (e) {
       state = state.copyWith(
         isProcessing: false,
         clearProgress: true,
+        clearNodeInfo: true,
         error: '파일을 처리할 수 없습니다: $e',
       );
     } finally {

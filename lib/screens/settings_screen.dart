@@ -526,7 +526,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           leading: const Icon(Icons.info_outline),
           title: const Text('톡비서'),
           subtitle: Text(
-            'v1.0.10',
+            'v2.0.1',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -546,7 +546,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           onTap: () => showLicensePage(
             context: context,
             applicationName: '톡비서',
-            applicationVersion: 'v1.0.10',
+            applicationVersion: 'v2.0.1',
             applicationLegalese: '© 2026 merryiscat\nMIT License',
           ),
         ),
