@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 
 /// SSE 노드 진행 이벤트 — 파이프라인 내 각 에이전트 노드가 완료될 때마다 발생
 ///
-/// 예: "잡담 필터링 완료 (1/9)" → node="filter", displayName="잡담 필터링", step=1, totalSteps=9
+/// 예: "잡담 필터링 완료 (1/7)" → node="filter", displayName="잡담 필터링", step=1, totalSteps=7
 class NodeProgressEvent {
   /// 서버 내부 노드 ID (예: "analyst", "web_searcher")
   final String node;
@@ -235,7 +235,7 @@ class AgentApiService {
                     node: data['node'] as String? ?? '',
                     displayName: data['display_name'] as String? ?? '',
                     step: data['step'] as int? ?? 0,
-                    totalSteps: data['total_steps'] as int? ?? 9,
+                    totalSteps: data['total_steps'] as int? ?? 7,
                   ));
                   break;
 
