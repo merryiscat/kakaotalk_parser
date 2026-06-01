@@ -203,7 +203,9 @@ class AgentApiService {
       LlmResult? finalResult;
 
       await for (final chunk in response.stream.transform(utf8.decoder)) {
-        buffer += chunk;
+        // SSE 서버(sse-starlette)가 \r\n 줄바꿈을 사용하므로
+        // \r을 제거하여 \n으로 통일 (이벤트 구분자 \n\n 매칭용)
+        buffer += chunk.replaceAll('\r', '');
 
         // SSE 이벤트는 빈 줄(\n\n)로 구분됨
         while (buffer.contains('\n\n')) {
@@ -255,6 +257,37 @@ class AgentApiService {
               currentEvent = null;
             }
             // ': ping' 등 주석 줄은 자동 무시
+          }
+        }
+      }
+
+      // 스트림 종료 후 버퍼에 남은 데이터 처리
+      // (서버가 마지막 이벤트 직후 연결을 닫으면 \n\n 없이 버퍼에 남을 수 있음)
+      if (buffer.trim().isNotEmpty && finalResult == null) {
+        for (final line in buffer.split('\n')) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.substring(7).trim();
+          } else if (line.startsWith('data: ')) {
+            final jsonStr = line.substring(6);
+            Map<String, dynamic> data;
+            try {
+              data = jsonDecode(jsonStr) as Map<String, dynamic>;
+            } catch (_) {
+              continue;
+            }
+
+            if (currentEvent == 'result') {
+              finalResult = LlmResult(
+                text: data['summary'] as String? ?? '',
+                inputTokens: data['input_tokens'] as int? ?? 0,
+                outputTokens: data['output_tokens'] as int? ?? 0,
+              );
+            } else if (currentEvent == 'error') {
+              throw Exception(
+                data['detail'] as String? ?? '파이프라인 오류',
+              );
+            }
+            currentEvent = null;
           }
         }
       }
