@@ -17,7 +17,7 @@ class NodeProgressEvent {
   /// 현재까지 완료된 노드 수 (1부터 시작)
   final int step;
 
-  /// 파이프라인 전체 노드 수 (보통 8, REVISE 시 10)
+  /// 파이프라인 전체 노드 수 (현재 7개 노드)
   final int totalSteps;
 
   const NodeProgressEvent({

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/daily_digest.dart';
 import '../providers/digest_provider.dart';
 import 'digest_screen.dart';
+import 'shared_widgets.dart';
 
 /// 방 상세 화면 — 특정 채팅방의 날짜별 요약을 세로 타임라인으로 표시
 /// 요약이 없으면 파일 업로드 안내, FAB로 txt 파일 업로드 가능
@@ -47,35 +48,11 @@ class RoomDetailScreen extends ConsumerWidget {
     return Column(
       children: [
         // 처리 중 진행률 표시
-        if (digestState.isProcessing) ...[
-          // 노드 진행률이 있으면 확정 프로그레스바, 없으면 무한 애니메이션
-          if (digestState.nodeProgress != null)
-            LinearProgressIndicator(
-              value: digestState.nodeProgress!.$1 / digestState.nodeProgress!.$2,
-            )
-          else
-            const LinearProgressIndicator(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text(
-              _buildProgressText(digestState),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-        ],
+        if (digestState.isProcessing)
+          DigestProgressBar(digestState: digestState),
         // 에러 메시지
         if (digestState.error != null)
-          MaterialBanner(
-            content: Text(digestState.error!),
-            backgroundColor: Theme.of(context).colorScheme.errorContainer,
-            actions: [
-              TextButton(
-                onPressed: () =>
-                    ref.read(digestProvider.notifier).clearError(),
-                child: const Text('닫기'),
-              ),
-            ],
-          ),
+          DigestErrorBanner(errorMessage: digestState.error!),
         // 요약이 없으면 빈 상태, 있으면 리스트
         Expanded(
           child: digests.isEmpty
@@ -97,28 +74,6 @@ class RoomDetailScreen extends ConsumerWidget {
         ),
       ],
     );
-  }
-
-  /// 진행률 텍스트 조합
-  /// 날짜 단위 + 노드 단위 정보를 합쳐서 "요약 중... 1/3 — 대화 분석 완료 (3/8)" 형태로 표시
-  String _buildProgressText(DigestState digestState) {
-    final parts = <String>['요약 중...'];
-
-    // 날짜 단위 진행률 (예: "1/3")
-    if (digestState.processingProgress != null) {
-      parts.add(
-        '${digestState.processingProgress!.$1}/${digestState.processingProgress!.$2}',
-      );
-    }
-
-    // 노드 단위 진행률 (예: "— 대화 분석 완료 (3/8)")
-    if (digestState.currentNodeName != null &&
-        digestState.nodeProgress != null) {
-      final np = digestState.nodeProgress!;
-      parts.add('— ${digestState.currentNodeName!} 완료 (${np.$1}/${np.$2})');
-    }
-
-    return parts.join(' ');
   }
 
   /// 요약이 없을 때 보여주는 빈 화면
