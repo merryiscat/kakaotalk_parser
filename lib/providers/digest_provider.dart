@@ -176,7 +176,10 @@ class DigestNotifier extends Notifier<DigestState> {
   /// 5. 중복 감지: 이미 요약된 날짜는 스킵 (토큰 절약)
   /// 6. 새 날짜만 LLM 순차 호출 → DailyDigest 생성 → 즉시 state 반영
   /// 7. ChatRoom은 scope 벗어나면 GC 처리
-  Future<void> uploadAndDigest(String roomName) async {
+  /// [sinceDays] — 요약 범위 제한 (오늘 기준 최근 N일).
+  ///   null이면 파일에 있는 모든 과거 날짜를 대상으로 함 (기존 동작).
+  ///   예: 3 → 어제부터 3일 전까지만, 7 → 최근 일주일만.
+  Future<void> uploadAndDigest(String roomName, {int? sinceDays}) async {
     // 파일 선택 다이얼로그 (카카오톡 내보내기 기본 경로)
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -213,8 +216,18 @@ class DigestNotifier extends Notifier<DigestState> {
       //    내일이 되면 오늘 날짜가 완성되어 정상 요약 가능
       final today = DateTime.now();
       final todayOnly = DateTime(today.year, today.month, today.day);
+
+      // 3-1. 요약 범위 제한 — sinceDays가 지정되면 "오늘 기준 최근 N일"만 대상으로 함
+      //      cutoff = 오늘 - N일. 이 날짜(포함) 이후 ~ 어제까지가 요약 대상.
+      //      예) sinceDays=3 이고 오늘이 6/6 → cutoff 6/3 → 6/3·6/4·6/5 요약
+      //      sinceDays가 null이면 cutoff도 null → 모든 과거 날짜 대상 (기존 동작)
+      final DateTime? cutoff =
+          sinceDays == null ? null : todayOnly.subtract(Duration(days: sinceDays));
+
       final dates = grouped.keys
-          .where((d) => d.isBefore(todayOnly))
+          .where((d) =>
+              d.isBefore(todayOnly) && // 오늘 이전 날짜만
+              (cutoff == null || !d.isBefore(cutoff))) // 범위 하한 (cutoff 포함)
           .toList()
         ..sort();
 

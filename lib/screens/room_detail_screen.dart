@@ -30,11 +30,71 @@ class RoomDetailScreen extends ConsumerWidget {
         // 처리 중이면 비활성화
         onPressed: digestState.isProcessing
             ? null
-            : () => ref.read(digestProvider.notifier).uploadAndDigest(roomName),
+            : () => _pickRangeAndUpload(context, ref),
         icon: const Icon(Icons.upload_file),
         label: const Text('파일 업로드'),
       ),
     );
+  }
+
+  /// 파일 업로드 전, 요약할 기간을 먼저 고르는 바텀시트를 띄운다.
+  /// 사용자가 기간을 선택하면 그 범위(sinceDays)로 업로드·요약을 시작.
+  /// (전체 선택 시 sinceDays = null → 파일에 있는 모든 과거 날짜 요약)
+  Future<void> _pickRangeAndUpload(BuildContext context, WidgetRef ref) async {
+    // 선택지: 라벨 + sinceDays(요약할 최근 일수). 전체는 null.
+    const options = <(String, int?)>[
+      ('최근 3일', 3),
+      ('최근 일주일', 7),
+      ('최근 2주일', 14),
+      ('최근 한 달', 30),
+      ('전체 (없는 날짜 모두)', null),
+    ];
+
+    // 사용자가 고른 sinceDays를 돌려받음. 바텀시트를 그냥 닫으면 null이 아닌
+    // "미선택"이므로, 선택 여부를 구분하기 위해 별도 플래그 대신 결과 객체로 처리.
+    final selected = await showModalBottomSheet<(bool, int?)>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Text(
+                  '요약할 기간 선택',
+                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+              // 각 기간 옵션을 ListTile로 나열 (탭하면 그 값으로 닫힘)
+              for (final (label, days) in options)
+                ListTile(
+                  leading: Icon(
+                    days == null ? Icons.all_inclusive : Icons.calendar_today,
+                    color: Theme.of(ctx).colorScheme.primary,
+                  ),
+                  title: Text(label),
+                  // (선택됨=true, 고른 일수) 형태로 반환
+                  onTap: () => Navigator.pop(ctx, (true, days)),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+
+    // 사용자가 바깥을 탭해 닫은 경우(미선택)엔 아무 것도 하지 않음
+    if (selected == null || !selected.$1) return;
+
+    // 선택한 기간으로 업로드 + 요약 시작
+    await ref
+        .read(digestProvider.notifier)
+        .uploadAndDigest(roomName, sinceDays: selected.$2);
   }
 
   /// 본문 영역: 빈 상태 / 처리 중 / 요약 리스트
