@@ -30,71 +30,185 @@ class RoomDetailScreen extends ConsumerWidget {
         // 처리 중이면 비활성화
         onPressed: digestState.isProcessing
             ? null
-            : () => _pickRangeAndUpload(context, ref),
+            : () => _pickDatesAndUpload(context, ref),
         icon: const Icon(Icons.upload_file),
         label: const Text('파일 업로드'),
       ),
     );
   }
 
-  /// 파일 업로드 전, 요약할 기간을 먼저 고르는 바텀시트를 띄운다.
-  /// 사용자가 기간을 선택하면 그 범위(sinceDays)로 업로드·요약을 시작.
-  /// (전체 선택 시 sinceDays = null → 파일에 있는 모든 과거 날짜 요약)
-  Future<void> _pickRangeAndUpload(BuildContext context, WidgetRef ref) async {
-    // 선택지: 라벨 + sinceDays(요약할 최근 일수). 전체는 null.
-    const options = <(String, int?)>[
-      ('최근 3일', 3),
-      ('최근 일주일', 7),
-      ('최근 2주일', 14),
-      ('최근 한 달', 30),
-      ('전체 (없는 날짜 모두)', null),
-    ];
+  /// 파일을 먼저 선택·파싱한 뒤, 파일에 실제로 있는 날짜 목록을
+  /// 체크박스 바텀시트로 보여주고 사용자가 고른 날짜만 요약한다.
+  /// - 이미 요약된 날짜는 "요약됨" 표시 (다시 선택하면 재요약·덮어쓰기)
+  /// - 기본 선택: 아직 요약되지 않은 날짜 전부
+  Future<void> _pickDatesAndUpload(BuildContext context, WidgetRef ref) async {
+    final notifier = ref.read(digestProvider.notifier);
 
-    // 사용자가 고른 sinceDays를 돌려받음. 바텀시트를 그냥 닫으면 null이 아닌
-    // "미선택"이므로, 선택 여부를 구분하기 위해 별도 플래그 대신 결과 객체로 처리.
-    final selected = await showModalBottomSheet<(bool, int?)>(
+    // 1단계: 파일 선택 + 파싱 (취소하거나 파싱 실패하면 null)
+    final upload = await notifier.pickAndParse();
+    if (upload == null || !context.mounted) return;
+
+    // 요약 가능한 과거 날짜가 하나도 없는 경우 안내
+    if (upload.selectableDates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('요약할 과거 날짜가 없습니다. (오늘 대화는 내일 요약할 수 있어요)'),
+        ),
+      );
+      return;
+    }
+
+    // 이미 요약된 날짜 집합 ("요약됨" 뱃지 표시용)
+    final digestedDates = <DateTime>{
+      for (final d in upload.selectableDates)
+        if (notifier.isDigested(roomName, d)) d,
+    };
+
+    // 기본 선택: 아직 요약되지 않은 날짜 전부
+    final selected = upload.selectableDates
+        .where((d) => !digestedDates.contains(d))
+        .toSet();
+
+    // 2단계: 날짜 선택 바텀시트 (확정 시 선택된 날짜 Set 반환, 닫으면 null)
+    final confirmed =
+        await _showDateSelectSheet(context, upload, selected, digestedDates);
+    if (confirmed == null || confirmed.isEmpty) return;
+
+    // 3단계: 선택한 날짜만 요약 시작
+    await notifier.digestDates(roomName, upload, confirmed.toList());
+  }
+
+  /// 날짜 선택 바텀시트 — 파일에 있는 날짜를 체크박스 리스트로 표시
+  Future<Set<DateTime>?> _showDateSelectSheet(
+    BuildContext context,
+    ParsedUpload upload,
+    Set<DateTime> initialSelected,
+    Set<DateTime> digestedDates,
+  ) {
+    final dateFormat = DateFormat('M월 d일 (E)', 'ko');
+    // 최신 날짜가 위로 오도록 내림차순 표시 (요약 자체는 오래된 날짜부터 진행)
+    final dates = upload.selectableDates.reversed.toList();
+
+    return showModalBottomSheet<Set<DateTime>>(
       context: context,
       showDragHandle: true,
+      // 날짜가 많을 수 있으므로 화면 높이의 최대 70%까지 사용
+      isScrollControlled: true,
       builder: (ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: Text(
-                  '요약할 기간 선택',
-                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+        final selected = Set<DateTime>.from(initialSelected);
+        // 체크박스 상태 변경 시 바텀시트만 다시 그리기 위한 StatefulBuilder
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final allSelected = selected.length == dates.length;
+            return SafeArea(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 헤더: 제목 + 전체 선택/해제 버튼
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 8, 0),
+                      child: Row(
+                        children: [
+                          Text(
+                            '요약할 날짜 선택',
+                            style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => setSheetState(() {
+                              // 전부 선택돼 있으면 해제, 아니면 전체 선택
+                              if (allSelected) {
+                                selected.clear();
+                              } else {
+                                selected.addAll(dates);
+                              }
+                            }),
+                            child: Text(allSelected ? '전체 해제' : '전체 선택'),
+                          ),
+                        ],
                       ),
+                    ),
+                    // 날짜 체크박스 리스트 (스크롤 가능)
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: dates.length,
+                        itemBuilder: (_, i) {
+                          final date = dates[i];
+                          final messageCount = upload.grouped[date]!.length;
+                          final digested = digestedDates.contains(date);
+                          return CheckboxListTile(
+                            value: selected.contains(date),
+                            onChanged: (checked) => setSheetState(() {
+                              if (checked == true) {
+                                selected.add(date);
+                              } else {
+                                selected.remove(date);
+                              }
+                            }),
+                            title: Row(
+                              children: [
+                                Text(dateFormat.format(date)),
+                                // 이미 요약된 날짜 표시 (선택하면 재요약)
+                                if (digested) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(ctx)
+                                          .colorScheme
+                                          .secondaryContainer,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '요약됨',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Theme.of(ctx)
+                                            .colorScheme
+                                            .onSecondaryContainer,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            subtitle: Text('$messageCount개 메시지'),
+                            dense: true,
+                          );
+                        },
+                      ),
+                    ),
+                    // 하단 확정 버튼 — 선택 개수 표시, 0개면 비활성화
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                      child: FilledButton(
+                        onPressed: selected.isEmpty
+                            ? null
+                            : () => Navigator.pop(ctx, selected),
+                        child: Text(
+                          selected.isEmpty
+                              ? '날짜를 선택하세요'
+                              : '${selected.length}개 날짜 요약 시작',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              // 각 기간 옵션을 ListTile로 나열 (탭하면 그 값으로 닫힘)
-              for (final (label, days) in options)
-                ListTile(
-                  leading: Icon(
-                    days == null ? Icons.all_inclusive : Icons.calendar_today,
-                    color: Theme.of(ctx).colorScheme.primary,
-                  ),
-                  title: Text(label),
-                  // (선택됨=true, 고른 일수) 형태로 반환
-                  onTap: () => Navigator.pop(ctx, (true, days)),
-                ),
-              const SizedBox(height: 8),
-            ],
-          ),
+            );
+          },
         );
       },
     );
-
-    // 사용자가 바깥을 탭해 닫은 경우(미선택)엔 아무 것도 하지 않음
-    if (selected == null || !selected.$1) return;
-
-    // 선택한 기간으로 업로드 + 요약 시작
-    await ref
-        .read(digestProvider.notifier)
-        .uploadAndDigest(roomName, sinceDays: selected.$2);
   }
 
   /// 본문 영역: 빈 상태 / 처리 중 / 요약 리스트

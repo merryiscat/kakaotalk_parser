@@ -91,6 +91,23 @@ class DigestState {
 }
 
 /// ──────────────────────────────────────────────
+/// 파싱 결과 임시 객체
+/// 파일 선택+파싱(1단계)과 요약(2단계) 사이에 데이터를 전달한다
+/// ──────────────────────────────────────────────
+class ParsedUpload {
+  /// 날짜별로 분류된 메시지 (파서의 groupByDate 결과)
+  final Map<DateTime, List<ChatMessage>> grouped;
+
+  /// 요약 대상으로 선택 가능한 날짜 목록 (오늘 제외, 과거만, 오름차순 정렬)
+  final List<DateTime> selectableDates;
+
+  const ParsedUpload({
+    required this.grouped,
+    required this.selectableDates,
+  });
+}
+
+/// ──────────────────────────────────────────────
 /// DigestNotifier — 파일 업로드부터 AI 요약까지 원스톱 처리
 /// ──────────────────────────────────────────────
 class DigestNotifier extends Notifier<DigestState> {
@@ -167,19 +184,23 @@ class DigestNotifier extends Notifier<DigestState> {
     _saveState(); // 이름 변경 후 저장
   }
 
-  /// ── 핵심 메서드: 파일 업로드 → 파싱 → 자동 요약 ──
-  /// roomName: 미리 생성해둔 방 이름 (파싱 결과 대신 이 이름 사용)
-  /// 1. FilePicker로 파일 선택
-  /// 2. KakaotalkParser.parse() → ChatRoom (임시)
-  /// 3. groupByDate() → 날짜별 메시지
-  /// 4. 오늘 날짜 제외 (아직 대화가 진행 중일 수 있으므로)
-  /// 5. 중복 감지: 이미 요약된 날짜는 스킵 (토큰 절약)
-  /// 6. 새 날짜만 LLM 순차 호출 → DailyDigest 생성 → 즉시 state 반영
-  /// 7. ChatRoom은 scope 벗어나면 GC 처리
-  /// [sinceDays] — 요약 범위 제한 (오늘 기준 최근 N일).
-  ///   null이면 파일에 있는 모든 과거 날짜를 대상으로 함 (기존 동작).
-  ///   예: 3 → 어제부터 3일 전까지만, 7 → 최근 일주일만.
-  Future<void> uploadAndDigest(String roomName, {int? sinceDays}) async {
+  /// ── 요약 키 생성: "방이름_YYYY-MM-DD" (DailyDigest.key와 동일 형식) ──
+  String _digestKey(String roomName, DateTime date) =>
+      '${roomName}_${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  /// 해당 방·날짜의 요약이 이미 존재하는지 확인
+  /// (날짜 선택 바텀시트에서 "요약됨" 표시와 기본 선택 제외에 사용)
+  bool isDigested(String roomName, DateTime date) =>
+      state.digests.containsKey(_digestKey(roomName, date));
+
+  /// ── 1단계: 파일 선택 + 파싱 ──
+  /// FilePicker로 txt 파일을 고르고 파싱하여, 날짜별 메시지와
+  /// 선택 가능한 날짜 목록을 돌려준다. UI는 이 결과로 날짜 선택
+  /// 바텀시트를 띄운 뒤 digestDates()를 호출한다.
+  /// 오늘 날짜는 제외 — 아직 대화가 진행 중일 수 있어 불완전한 요약이 되므로,
+  /// 내일이 되면 오늘 날짜가 완성되어 정상 요약 가능.
+  /// 사용자가 파일 선택을 취소하거나 파싱에 실패하면 null 반환.
+  Future<ParsedUpload?> pickAndParse() async {
     // 파일 선택 다이얼로그 (카카오톡 내보내기 기본 경로)
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -188,7 +209,41 @@ class DigestNotifier extends Notifier<DigestState> {
     );
 
     // 사용자가 파일 선택을 취소한 경우
-    if (result == null || result.files.single.path == null) return;
+    if (result == null || result.files.single.path == null) return null;
+
+    try {
+      // 파일 읽기 + 파싱 → 날짜별 메시지 그룹핑
+      final file = File(result.files.single.path!);
+      final content = await file.readAsString();
+      final chatRoom = KakaotalkParser.parse(content);
+      final grouped = chatRoom.groupByDate();
+
+      // 오늘 이전 날짜만 선택 가능 (오름차순 정렬)
+      final today = DateTime.now();
+      final todayOnly = DateTime(today.year, today.month, today.day);
+      final dates =
+          grouped.keys.where((d) => d.isBefore(todayOnly)).toList()..sort();
+
+      return ParsedUpload(grouped: grouped, selectableDates: dates);
+    } catch (e) {
+      state = state.copyWith(error: '파일을 처리할 수 없습니다: $e');
+      return null;
+    }
+  }
+
+  /// ── 2단계: 선택한 날짜들 요약 ──
+  /// [dates]에 담긴 날짜만 순서대로 LLM 호출 → DailyDigest 생성 → 즉시 저장.
+  /// 이미 요약된 날짜를 다시 선택한 경우 새 결과로 덮어쓴다 (재요약).
+  Future<void> digestDates(
+    String roomName,
+    ParsedUpload upload,
+    List<DateTime> dates,
+  ) async {
+    if (dates.isEmpty) return;
+
+    // 오래된 날짜부터 순서대로 처리
+    final newDates = [...dates]..sort();
+    final grouped = upload.grouped;
 
     // 처리 시작 (노드 정보도 초기화)
     state = state.copyWith(
@@ -204,54 +259,7 @@ class DigestNotifier extends Notifier<DigestState> {
     }
 
     try {
-      // 1. 파일 읽기 + 파싱 → ChatRoom (임시 객체)
-      final file = File(result.files.single.path!);
-      final content = await file.readAsString();
-      final chatRoom = KakaotalkParser.parse(content);
-
-      // 2. 날짜별 메시지 그룹핑
-      final grouped = chatRoom.groupByDate();
-
-      // 3. 오늘 날짜 제외 — 아직 대화가 진행 중일 수 있어 불완전한 요약이 됨
-      //    내일이 되면 오늘 날짜가 완성되어 정상 요약 가능
-      final today = DateTime.now();
-      final todayOnly = DateTime(today.year, today.month, today.day);
-
-      // 3-1. 요약 범위 제한 — sinceDays가 지정되면 "오늘 기준 최근 N일"만 대상으로 함
-      //      cutoff = 오늘 - N일. 이 날짜(포함) 이후 ~ 어제까지가 요약 대상.
-      //      예) sinceDays=3 이고 오늘이 6/6 → cutoff 6/3 → 6/3·6/4·6/5 요약
-      //      sinceDays가 null이면 cutoff도 null → 모든 과거 날짜 대상 (기존 동작)
-      final DateTime? cutoff =
-          sinceDays == null ? null : todayOnly.subtract(Duration(days: sinceDays));
-
-      final dates = grouped.keys
-          .where((d) =>
-              d.isBefore(todayOnly) && // 오늘 이전 날짜만
-              (cutoff == null || !d.isBefore(cutoff))) // 범위 하한 (cutoff 포함)
-          .toList()
-        ..sort();
-
-      // 4. 중복 감지: 이미 요약된 날짜는 제외
-      final newDates = <DateTime>[];
-      for (final date in dates) {
-        final key =
-            '${roomName}_${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-        if (!state.digests.containsKey(key)) {
-          newDates.add(date);
-        }
-      }
-
-      // 새로 요약할 날짜가 없으면 완료
-      if (newDates.isEmpty) {
-        state = state.copyWith(
-          isProcessing: false,
-          clearProgress: true,
-          clearNodeInfo: true,
-        );
-        return;
-      }
-
-      // 5. 설정에서 서버 URL 확인 (SharedPreferences 로딩 완료 보장)
+      // 설정에서 서버 URL 확인 (SharedPreferences 로딩 완료 보장)
       await ref.read(settingsProvider.notifier).ensureLoaded();
       final settings = ref.read(settingsProvider);
 
@@ -265,7 +273,7 @@ class DigestNotifier extends Notifier<DigestState> {
         return;
       }
 
-      // 6. 멀티에이전트 서버 서비스 생성
+      // 멀티에이전트 서버 서비스 생성
       final agentService = AgentApiService(
         serverUrl: settings.serverUrl,
         openaiApiKey: settings.apiKey,
@@ -348,7 +356,7 @@ class DigestNotifier extends Notifier<DigestState> {
         }
       }
 
-      // 7. 처리 완료 (ChatRoom은 scope를 벗어나며 GC 처리)
+      // 처리 완료 (파싱 결과는 scope를 벗어나며 GC 처리)
       state = state.copyWith(
         isProcessing: false,
         processingProgress: (total, total),
@@ -360,7 +368,7 @@ class DigestNotifier extends Notifier<DigestState> {
         isProcessing: false,
         clearProgress: true,
         clearNodeInfo: true,
-        error: '파일을 처리할 수 없습니다: $e',
+        error: '요약 처리 중 오류가 발생했습니다: $e',
       );
     } finally {
       // Foreground Service 종료 (처리 완료 또는 에러 모두)
