@@ -30,7 +30,6 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 3936
 - **Services** — 외부 통신 및 저장
   - `agent_api_service.dart` — SSE 수동 파싱으로 서버 스트리밍 수신 (node_complete/result/error 이벤트)
   - `storage_service.dart` — `tokbiseo_data.json` 파일로 영구 저장 (path_provider)
-  - `prompt_builder.dart` — 메시지를 "[HH:MM] 발신자: 내용" 형식으로 변환
 - **Providers** (Riverpod Notifier) — 상태 관리
   - `digest_provider.dart` — 핵심 비즈니스 로직: 파싱 → 중복 감지 → 요약 요청 → 저장
   - `settings_provider.dart` — API 키, 서버 URL 등 SharedPreferences 관리
@@ -50,6 +49,12 @@ Filter(gpt-4.1-mini) → Analyst(gpt-5.1) → Supervisor → Web/YT Searcher (�
 - 현재 버전: pubspec.yaml의 `version` 필드 확인
 - 매 수정마다 patch + buildNumber 함께 올릴 것
 - 커밋 메시지에 버전 포함: `v2.0.x: 변경 설명`
+
+## docs 인덱스
+
+| 파일 | 내용 | 참조 시점 |
+|------|------|----------|
+| `docs/todo.md` | TODO + 완료 이력 — Notion 연동 개선 등 | 작업 우선순위 판단 시 |
 
 ## Tech Stack
 - Dart SDK ^3.11.0, Flutter (iOS/Android/Windows)
