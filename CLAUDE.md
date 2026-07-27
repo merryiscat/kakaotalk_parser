@@ -14,7 +14,7 @@ flutter build apk --release      # 릴리스 APK 빌드
 dart run flutter_launcher_icons  # 앱 아이콘 생성
 ```
 
-### 멀티에이전트 서버 (tokbiseo-server/ 서브모듈)
+### 멀티에이전트 서버 (tokbiseo-server/ — 본 저장소에서 직접 관리)
 ```bash
 cd tokbiseo-server
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 3936

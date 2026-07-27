@@ -1,0 +1,23 @@
+# 환경 변수 (API 키 보호) — .env.production 등 변형 파일도 모두 제외
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+build/
+dist/
+wheels/
+*.egg-info
+
+# 가상 환경
+.venv/
+
+# 로그
+logs/
+
+# IDE
+.vscode/
+.idea/

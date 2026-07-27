@@ -1,0 +1,24 @@
+# Git
+.git/
+.gitignore
+
+# Python 가상환경 & 캐시 (Docker 안에서 새로 설치)
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 환경변수 (docker-compose의 env_file로 별도 주입)
+.env
+
+# IDE 설정
+.vscode/
+.idea/
+
+# 문서 (이미지에 불필요)
+*.md
+
+# Docker 자기 자신
+Dockerfile
+docker-compose.yml
+.dockerignore
