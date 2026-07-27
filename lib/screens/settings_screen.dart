@@ -517,10 +517,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final inputTokens = digestState.totalInputTokens;
     final outputTokens = digestState.totalOutputTokens;
 
-    // gpt-5.1 기준 1M 토큰당 가격 (USD) — 실제 가격은 추후 조정
-    const model = 'gpt-5.1';
-    const inputPrice = 2.0; // 입력 100만 토큰당 2달러
-    const outputPrice = 8.0; // 출력 100만 토큰당 8달러 (입력의 4배)
+    // gpt-5.4-mini 기준 1M 토큰당 가격 (USD) — 실제 가격은 추후 조정
+    const model = 'gpt-5.4-mini';
+    const inputPrice = 0.75; // 입력 100만 토큰당 0.75달러
+    const outputPrice = 4.5; // 출력 100만 토큰당 4.5달러 (입력의 6배)
 
     // 비용 계산: 토큰 수 / 1,000,000 × 단가
     final inputCost = inputTokens / 1000000 * inputPrice;

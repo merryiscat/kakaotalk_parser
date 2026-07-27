@@ -32,7 +32,7 @@ uv add <package-name>
 Filter → Analyst → Supervisor → [Web Searcher ∥ YT Searcher] → Validator → Writer → END
 ```
 
-- **LLM 사용 노드**: Filter (gpt-4.1-mini), Analyst (gpt-5.1), Validator (gpt-4.1-mini), Writer (gpt-5.1, temp=0.3)
+- **LLM 사용 노드**: Filter (gpt-4.1-mini), Analyst (gpt-5.4-mini), Validator (gpt-4.1-mini), Writer (gpt-5.4-mini, temp=0.3)
 - **LLM 미사용 노드**: Supervisor (JSON 파싱), Web Searcher (Tavily API), YT Searcher (YouTube API)
 - **병렬 실행**: Supervisor 이후 Web/YT Searcher 병렬
 

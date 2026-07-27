@@ -158,7 +158,7 @@ def writer_node(state: AgentState) -> dict:
     출력: state.report (마크다운 리포트)
     """
     logger.info("[시작] 리포트 작성 중...")
-    model = os.getenv("OPENAI_MODEL", "gpt-5.1")
+    model = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
     llm = ChatOpenAI(model=model, temperature=0.3)
 
     # Filter가 잡담을 제거한 텍스트를 사용 (입력 토큰 절감)

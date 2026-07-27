@@ -37,7 +37,7 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 3936
 - **Utils** — `report_parser.dart`가 마크다운 리포트를 `##` 섹션별로 파싱
 
 ### 서버 (LangGraph 파이프라인, 7노드)
-Filter(gpt-4.1-mini) → Analyst(gpt-5.1) → Supervisor → Web/YT Searcher (병렬) → Validator(gpt-4.1-mini) → Writer(gpt-5.1)
+Filter(gpt-4.1-mini) → Analyst(gpt-5.4-mini) → Supervisor → Web/YT Searcher (병렬) → Validator(gpt-4.1-mini) → Writer(gpt-5.4-mini)
 
 ## 주요 패턴
 - **SSE 스트리밍**: `AgentApiService`가 raw HTTP 응답을 수동 파싱 (sse-starlette 프로토콜)

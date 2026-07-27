@@ -110,7 +110,7 @@ def analyst_node(state: AgentState) -> dict:
     출력: state.analysis (구조화된 분석 결과 JSON 문자열)
     """
     logger.info("[시작] 대화 분석 중...")
-    model = os.getenv("OPENAI_MODEL", "gpt-5.1")
+    model = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
     llm = ChatOpenAI(model=model, temperature=0)
 
     # URL 제목 정보를 프롬프트에 포함
