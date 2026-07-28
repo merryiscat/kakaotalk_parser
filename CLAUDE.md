@@ -54,7 +54,8 @@ Filter(gpt-4.1-mini) → Analyst(gpt-5.4-mini) → Supervisor → Web/YT Searche
 
 | 파일 | 내용 | 참조 시점 |
 |------|------|----------|
-| `docs/todo.md` | TODO + 완료 이력 — Notion 연동 개선 등 | 작업 우선순위 판단 시 |
+| `docs/todo.md` | TODO + 완료 이력 — 디자인 리뉴얼, 티스토리 발행 등 | 작업 우선순위 판단 시 |
+| `docs/design_renewal_prompt_v1.md` | Claude Design 입력 프롬프트 (현재 UI 문제점 정리 포함) | 디자인 리뉴얼 작업 시 |
 
 ## Tech Stack
 - Dart SDK ^3.11.0, Flutter (iOS/Android/Windows)

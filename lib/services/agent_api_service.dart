@@ -69,6 +69,35 @@ class AgentApiService {
     this.timeout = const Duration(seconds: 300),
   });
 
+  /// 요약 요청 바디를 구성합니다 (summarize / summarizeStream 공통)
+  ///
+  /// [roomName], [chatDate], [messageCount]는 서버가 Notion 페이지의
+  /// 제목과 속성(채팅방/대화일자/메시지수)을 채우는 데 사용합니다.
+  /// 비워두면 Notion에는 기본 제목으로만 저장됩니다.
+  String _buildRequestBody(
+    String messagesText,
+    Map<String, String> urlTitles,
+    String roomName,
+    DateTime? chatDate,
+    int messageCount,
+  ) {
+    return jsonEncode({
+      'messages': messagesText,
+      'url_titles': urlTitles,
+      'room_name': roomName,
+      // 서버는 YYYY-MM-DD 문자열을 기대 (Notion date 속성으로 변환됨)
+      'chat_date': chatDate == null ? '' : _formatDate(chatDate),
+      'message_count': messageCount,
+      'openai_api_key': openaiApiKey,
+      'tavily_api_key': tavilyApiKey,
+      'youtube_api_key': youtubeApiKey,
+    });
+  }
+
+  /// DateTime → "YYYY-MM-DD" (DailyDigest.key와 동일한 날짜 형식)
+  String _formatDate(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
   /// 서버 연결 상태를 확인합니다 (GET /health)
   ///
   /// 설정 화면에서 "연결 테스트" 버튼 누를 때 호출.
@@ -100,18 +129,22 @@ class AgentApiService {
   ///
   /// [messagesText] : 파싱된 대화 텍스트 ("[HH:MM] 발신자: 내용" 형식)
   /// [urlTitles] : URL → 페이지 제목 맵
+  /// [roomName], [chatDate], [messageCount] : Notion 저장용 메타데이터
   Future<LlmResult> summarize(
     String messagesText, {
     Map<String, String> urlTitles = const {},
+    String roomName = '',
+    DateTime? chatDate,
+    int messageCount = 0,
   }) async {
-    // 요청 바디 구성 (API 키를 서버로 전송)
-    final body = jsonEncode({
-      'messages': messagesText,
-      'url_titles': urlTitles,
-      'openai_api_key': openaiApiKey,
-      'tavily_api_key': tavilyApiKey,
-      'youtube_api_key': youtubeApiKey,
-    });
+    // 요청 바디 구성 (API 키 + 메타데이터를 서버로 전송)
+    final body = _buildRequestBody(
+      messagesText,
+      urlTitles,
+      roomName,
+      chatDate,
+      messageCount,
+    );
 
     try {
       final response = await http
@@ -156,6 +189,9 @@ class AgentApiService {
   Future<LlmResult> summarizeStream(
     String messagesText, {
     Map<String, String> urlTitles = const {},
+    String roomName = '',
+    DateTime? chatDate,
+    int messageCount = 0,
     void Function(NodeProgressEvent)? onNodeComplete,
   }) async {
     // HTTP 클라이언트를 직접 생성하여 스트림 종료 시 반드시 해제
@@ -173,13 +209,13 @@ class AgentApiService {
         Uri.parse('$baseUrl/api/summarize-stream'),
       );
       request.headers['Content-Type'] = 'application/json';
-      request.body = jsonEncode({
-        'messages': messagesText,
-        'url_titles': urlTitles,
-        'openai_api_key': openaiApiKey,
-        'tavily_api_key': tavilyApiKey,
-        'youtube_api_key': youtubeApiKey,
-      });
+      request.body = _buildRequestBody(
+        messagesText,
+        urlTitles,
+        roomName,
+        chatDate,
+        messageCount,
+      );
 
       // StreamedResponse로 SSE 스트림 수신
       final response = await client.send(request);

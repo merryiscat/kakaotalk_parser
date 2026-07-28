@@ -14,4 +14,7 @@ dependencies = [
     "pydantic>=2.10.0",
     "sse-starlette>=2.0.0",
     "httpx>=0.27.0",
+    # 티스토리 발행용 브라우저 자동화
+    # (티스토리 Open API가 2024년 2월 종료되어 에디터 자동화가 유일한 경로)
+    "playwright>=1.47.0",
 ]

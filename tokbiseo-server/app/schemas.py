@@ -26,6 +26,21 @@ class SummarizeRequest(BaseModel):
         default_factory=dict,
         description="URL → 페이지 제목 맵 (선택)",
     )
+    # ── 리포트 메타데이터 ──
+    # Notion 페이지 제목과 속성(채팅방/대화일자/메시지수)을 채우는 데 사용합니다.
+    # 비어있으면 Notion에는 제목만 기본값으로 저장됩니다.
+    room_name: str = Field(
+        default="",
+        description="채팅방 이름 (Notion 제목·속성에 사용)",
+    )
+    chat_date: str = Field(
+        default="",
+        description="요약 대상 대화 날짜 (YYYY-MM-DD)",
+    )
+    message_count: int = Field(
+        default=0,
+        description="해당 날짜의 원본 메시지 수",
+    )
     # API 키 — 앱에서 전송, 서버의 .env 값보다 우선 적용
     openai_api_key: str = Field(
         default="",

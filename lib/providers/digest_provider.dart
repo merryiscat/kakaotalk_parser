@@ -307,6 +307,10 @@ class DigestNotifier extends Notifier<DigestState> {
             result = await agentService.summarizeStream(
               messagesText,
               urlTitles: urlTitles,
+              // Notion 페이지 제목·속성용 메타데이터
+              roomName: roomName,
+              chatDate: date,
+              messageCount: messages.length,
               onNodeComplete: (event) {
                 // 각 노드 완료 시 상태 업데이트 → UI에 "대화 분석 완료 (3/8)" 표시
                 state = state.copyWith(
@@ -322,6 +326,9 @@ class DigestNotifier extends Notifier<DigestState> {
             result = await agentService.summarize(
               messagesText,
               urlTitles: urlTitles,
+              roomName: roomName,
+              chatDate: date,
+              messageCount: messages.length,
             );
           }
 

@@ -7,7 +7,10 @@
 # ============================================================
 
 # ── 1단계: 의존성 설치 (builder) ──
-FROM python:3.13-slim AS builder
+# bookworm(Debian 12) 고정: python:3.13-slim은 trixie(Debian 13) 기반으로 옮겨갔는데
+# Playwright의 install-deps가 공식 지원하는 것은 Debian 11/12라,
+# trixie에서는 브라우저 시스템 패키지 설치가 실패할 수 있습니다.
+FROM python:3.13-slim-bookworm AS builder
 
 # uv 설치 (pip 대신 사용하는 빠른 Python 패키지 관리자)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
@@ -32,7 +35,8 @@ RUN uv sync --frozen --no-dev
 
 
 # ── 2단계: 실행 환경 (runtime) ──
-FROM python:3.13-slim AS runtime
+# builder와 동일한 베이스를 써야 복사해 온 .venv의 Python ABI가 맞습니다.
+FROM python:3.13-slim-bookworm AS runtime
 
 # 한국 시간대 설정
 ENV TZ=Asia/Seoul
@@ -58,6 +62,20 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Docker에서는 환경변수를 docker-compose.yml의 env_file로 주입
 # Python 출력 버퍼링 끄기 (로그가 즉시 출력되도록)
 ENV PYTHONUNBUFFERED=1
+
+# ── Playwright 브라우저 설치 (티스토리 발행용) ──
+#
+# 반드시 USER 전환 전(root 상태)에 실행해야 합니다:
+#   --with-deps가 apt로 Chromium 실행 라이브러리(libnss3, libgbm 등)를 설치하는데
+#   slim 이미지에는 이 라이브러리들이 없고, 설치에는 root 권한이 필요합니다.
+#
+# PLAYWRIGHT_BROWSERS_PATH를 공용 경로로 지정하는 이유:
+#   기본 설치 위치는 설치를 실행한 사용자의 ~/.cache/ms-playwright이므로
+#   root로 설치하면 tokbiseo 사용자가 읽을 수 없습니다.
+#   런타임에도 이 환경변수가 유지되어야 브라우저를 찾습니다.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN /app/.venv/bin/playwright install --with-deps chromium && \
+    chmod -R a+rX /ms-playwright
 
 # 포트 노출 (톡비서 서버 기본 포트)
 EXPOSE 3936

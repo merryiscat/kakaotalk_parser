@@ -12,6 +12,7 @@ import json
 import logging
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -20,7 +21,11 @@ from sse_starlette.sse import EventSourceResponse
 
 from .schemas import SummarizeRequest, SummarizeResponse, HealthResponse
 from .agents.graph import build_graph
-from .services.notion_service import save_report_to_notion, exchange_code_for_token
+from .services.notion_service import (
+    save_report_to_notion,
+    exchange_code_for_token,
+    extract_keywords,
+)
 
 # .env 파일에서 환경 변수 로드 (API 키 등)
 # 서버 루트 디렉토리의 .env를 명시적으로 지정 (실행 위치와 무관하게 동작)
@@ -148,22 +153,63 @@ def _apply_api_keys(request: SummarizeRequest) -> None:
         os.environ["YOUTUBE_API_KEY"] = request.youtube_api_key
 
 
-async def _save_to_notion(report: str) -> None:
+def _build_notion_title(request: SummarizeRequest) -> str:
+    """
+    Notion 페이지 제목을 만듭니다.
+
+    "방이름 — 2026-03-10" 형식이 기본이고, 앱이 메타데이터를 보내지 않는
+    구버전이면 사용 가능한 정보만으로 조합합니다.
+    """
+    room = request.room_name.strip()
+    date = request.chat_date.strip()
+    if room and date:
+        return f"{room} — {date}"
+    if room:
+        return room
+    if date:
+        return f"톡비서 리포트 — {date}"
+    return "톡비서 리포트"
+
+
+async def _save_to_notion(
+    report: str,
+    request: SummarizeRequest,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+) -> None:
     """
     리포트를 Notion 데이터베이스에 저장합니다 (설정되어 있을 때만).
 
     .env에 NOTION_ACCESS_TOKEN과 NOTION_DATABASE_ID가 모두 있을 때만 동작합니다.
     저장 실패해도 예외를 발생시키지 않고 경고 로그만 남깁니다.
+
+    메타데이터는 DB에 해당 속성이 있을 때만 채워집니다
+    (매핑 규칙은 notion_service._PROPERTY_CANDIDATES 참조).
     """
     notion_token = os.getenv("NOTION_ACCESS_TOKEN", "")
     notion_db = os.getenv("NOTION_DATABASE_ID", "")
     if not (notion_token and notion_db):
         return
+
+    meta = {
+        "room_name": request.room_name.strip(),
+        "chat_date": request.chat_date.strip(),
+        "message_count": request.message_count,
+        # 로컬 타임존 오프셋 포함 ISO 8601 (Notion date 속성이 요구하는 형식)
+        "created_at": datetime.now().astimezone().isoformat(),
+        "keywords": extract_keywords(report),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        # 티스토리 발행 큐의 시작 상태
+        "publish_status": "초안",
+    }
+
     result = await save_report_to_notion(
         access_token=notion_token,
         database_id=notion_db,
-        title="톡비서 리포트",
+        title=_build_notion_title(request),
         report_markdown=report,
+        meta=meta,
     )
     if "error" in result:
         logger.warning(f"Notion 저장 실패 (리포트는 정상 반환): {result['error']}")
@@ -226,7 +272,12 @@ async def summarize(request: SummarizeRequest):
                 detail="리포트 생성에 실패했습니다. 파이프라인 결과가 비어있습니다.",
             )
 
-        await _save_to_notion(report)
+        await _save_to_notion(
+            report,
+            request,
+            input_tokens=result.get("total_input_tokens", 0),
+            output_tokens=result.get("total_output_tokens", 0),
+        )
 
         return SummarizeResponse(
             summary=report,
@@ -371,7 +422,12 @@ async def summarize_stream(request: SummarizeRequest):
                 ),
             }
 
-            await _save_to_notion(last_report)
+            await _save_to_notion(
+                last_report,
+                request,
+                input_tokens=accumulated_input_tokens,
+                output_tokens=accumulated_output_tokens,
+            )
 
         except Exception as e:
             logger.error(f"SSE 파이프라인 오류: {e}", exc_info=True)

@@ -26,6 +26,10 @@ services:
     volumes:
       - ./logs:/app/logs
 
+    # Chromium 공유 메모리 확보 (티스토리 발행용 Playwright)
+    # Docker 기본값 64MB로는 렌더링 중 Chromium이 조용히 크래시합니다.
+    shm_size: 1gb
+
     # 서버 크래시나 PC 재부팅 시 자동 재시작
     restart: unless-stopped
 
