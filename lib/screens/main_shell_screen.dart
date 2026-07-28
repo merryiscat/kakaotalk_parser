@@ -3,17 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/navigation_provider.dart';
 import 'calendar_screen.dart';
 import 'home_screen.dart';
+import 'publish_screen.dart';
 import 'settings_screen.dart';
 
 /// 앱의 메인 shell 화면
-/// 하단 NavigationBar로 3개 탭(달력 / 홈 / 설정)을 전환합니다.
+/// 하단 NavigationBar로 4개 탭(달력 / 홈 / 발행 / 설정)을 전환합니다.
 /// IndexedStack을 사용해 탭 전환 시 각 화면의 상태를 유지합니다.
 class MainShellScreen extends ConsumerWidget {
   const MainShellScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 현재 선택된 탭 인덱스 (0=달력, 1=홈, 2=설정)
+    // 현재 선택된 탭 인덱스 (0=달력, 1=홈, 2=발행, 3=설정)
     final selectedTab = ref.watch(selectedTabProvider);
 
     return Scaffold(
@@ -24,7 +25,8 @@ class MainShellScreen extends ConsumerWidget {
         children: const [
           CalendarScreen(), // 인덱스 0: 달력
           HomeScreen(),     // 인덱스 1: 홈
-          SettingsScreen(), // 인덱스 2: 설정
+          PublishScreen(),  // 인덱스 2: 티스토리 발행
+          SettingsScreen(), // 인덱스 3: 설정
         ],
       ),
       // Material 3 하단 네비게이션 바
@@ -43,6 +45,11 @@ class MainShellScreen extends ConsumerWidget {
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: '홈',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.publish_outlined),
+            selectedIcon: Icon(Icons.publish),
+            label: '발행',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

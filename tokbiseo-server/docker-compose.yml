@@ -23,8 +23,11 @@ services:
       - "3936:3936"
 
     # 로그 파일을 호스트에 영속 저장
+    # data: 티스토리 로그인 세션(storage_state) 영속화
+    #   — 컨테이너를 재빌드해도 재로그인(캡차) 없이 발행 가능
     volumes:
       - ./logs:/app/logs
+      - ./data:/app/data
 
     # Chromium 공유 메모리 확보 (티스토리 발행용 Playwright)
     # Docker 기본값 64MB로는 렌더링 중 Chromium이 조용히 크래시합니다.

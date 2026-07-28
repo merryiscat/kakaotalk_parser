@@ -4,6 +4,9 @@ FastAPI 메인 앱 — 톡비서 멀티에이전트 서버
 엔드포인트:
 - POST /api/summarize : 카카오톡 대화를 받아 멀티에이전트 파이프라인으로 분석/요약
 - POST /api/summarize-stream : SSE 스트리밍 버전 (진행률 실시간 전송)
+- GET /api/notion/pending : 발행 대기(초안) Notion 페이지 목록
+- GET /api/notion/page/{page_id} : 페이지 본문 마크다운 (발행 미리보기)
+- POST /api/publish/tistory : 티스토리 발행 (Playwright 자동화)
 - GET /health : 서버 상태 확인
 """
 
@@ -19,13 +22,26 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 
-from .schemas import SummarizeRequest, SummarizeResponse, HealthResponse
+from .schemas import (
+    SummarizeRequest,
+    SummarizeResponse,
+    HealthResponse,
+    PendingPagesResponse,
+    PageContentResponse,
+    PublishRequest,
+    PublishResponse,
+)
 from .agents.graph import build_graph
 from .services.notion_service import (
     save_report_to_notion,
     exchange_code_for_token,
     extract_keywords,
+    query_pending_pages,
+    fetch_page_info,
+    fetch_page_markdown,
+    update_publish_status,
 )
+from .services import tistory_service
 
 # .env 파일에서 환경 변수 로드 (API 키 등)
 # 서버 루트 디렉토리의 .env를 명시적으로 지정 (실행 위치와 무관하게 동작)
@@ -440,3 +456,98 @@ async def summarize_stream(request: SummarizeRequest):
             }
 
     return EventSourceResponse(event_generator(), ping=30)
+
+
+# ── 티스토리 발행 (Notion 발행 큐 → 블로그 글) ──
+
+
+def _notion_credentials() -> tuple[str, str]:
+    """
+    Notion 토큰과 DB ID를 읽습니다. 없으면 400 에러.
+
+    발행 관련 엔드포인트는 모두 Notion 연동이 선행돼야 동작합니다.
+    """
+    token = os.getenv("NOTION_ACCESS_TOKEN", "")
+    db = os.getenv("NOTION_DATABASE_ID", "")
+    if not (token and db):
+        raise HTTPException(
+            status_code=400,
+            detail="Notion 연동이 설정되지 않았습니다 (NOTION_ACCESS_TOKEN/NOTION_DATABASE_ID).",
+        )
+    return token, db
+
+
+@app.get("/api/notion/pending", response_model=PendingPagesResponse)
+async def notion_pending():
+    """
+    발행상태가 "초안"인 Notion 페이지 목록 — 티스토리 발행 대기 큐.
+
+    앱의 발행 화면이 이 목록을 보여줍니다.
+    """
+    token, db = _notion_credentials()
+    result = await query_pending_pages(token, db)
+    if "error" in result:
+        raise HTTPException(status_code=502, detail=result["error"])
+    return PendingPagesResponse(pages=result["pages"])
+
+
+@app.get("/api/notion/page/{page_id}", response_model=PageContentResponse)
+async def notion_page_content(page_id: str):
+    """
+    페이지 본문을 마크다운으로 역변환해 반환 — 발행 전 미리보기용.
+    """
+    token, _ = _notion_credentials()
+    result = await fetch_page_markdown(token, page_id)
+    if "error" in result:
+        raise HTTPException(status_code=502, detail=result["error"])
+    return PageContentResponse(markdown=result["markdown"])
+
+
+@app.post("/api/publish/tistory", response_model=PublishResponse)
+async def publish_tistory(request: PublishRequest):
+    """
+    Notion 페이지 한 건을 티스토리에 발행합니다.
+
+    흐름: 페이지 정보·본문 조회 → Playwright로 에디터 자동화 발행
+          → 성공 시 Notion 발행상태를 "발행완료"로 갱신
+
+    주의: 티스토리 1일 발행 수 제한이 있으므로 앱에서 한 건씩 호출하세요.
+    """
+    token, db = _notion_credentials()
+
+    # 발행 설정(블로그 이름·로그인 세션)이 안 돼 있으면 바로 안내
+    config_error = tistory_service.is_configured()
+    if config_error:
+        raise HTTPException(status_code=400, detail=config_error)
+
+    # 1. 페이지 제목·키워드 조회
+    info = await fetch_page_info(token, request.page_id)
+    if "error" in info:
+        raise HTTPException(status_code=502, detail=info["error"])
+
+    # 2. 본문 마크다운 역변환
+    content = await fetch_page_markdown(token, request.page_id)
+    if "error" in content:
+        raise HTTPException(status_code=502, detail=content["error"])
+
+    markdown = content["markdown"].strip()
+    if not markdown:
+        raise HTTPException(status_code=400, detail="페이지 본문이 비어있습니다.")
+
+    # 3. Playwright 발행 (태그를 앱에서 안 보냈으면 Notion 키워드 사용)
+    title = info.get("title") or "톡비서 리포트"
+    tags = request.tags or info.get("keywords", [])
+    logger.info(f"티스토리 발행 시작: {title} (태그 {len(tags)}개)")
+
+    result = await tistory_service.publish_post(title, markdown, tags)
+    if "error" in result:
+        raise HTTPException(status_code=502, detail=result["error"])
+
+    # 4. 발행상태 갱신 — 실패해도 발행 자체는 성공이므로 경고만 남김
+    status_result = await update_publish_status(
+        token, db, request.page_id, "발행완료"
+    )
+    if "error" in status_result:
+        logger.warning(f"발행상태 갱신 실패 (글은 발행됨): {status_result['error']}")
+
+    return PublishResponse(url=result["url"])

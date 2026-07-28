@@ -79,6 +79,43 @@ class SummarizeResponse(BaseModel):
     )
 
 
+# ── 티스토리 발행 관련 스키마 ──
+
+
+class PendingPage(BaseModel):
+    """발행 대기(발행상태="초안") 상태인 Notion 페이지 요약 정보"""
+    page_id: str = Field(..., description="Notion 페이지 ID")
+    title: str = Field(default="", description="페이지 제목 (방이름 — 날짜)")
+    chat_date: str = Field(default="", description="대화 날짜 (YYYY-MM-DD)")
+    room_name: str = Field(default="", description="채팅방 이름")
+    keywords: list[str] = Field(default_factory=list, description="주제 키워드")
+    notion_url: str = Field(default="", description="Notion 페이지 URL")
+
+
+class PendingPagesResponse(BaseModel):
+    """GET /api/notion/pending 응답 — 발행 대기 목록"""
+    pages: list[PendingPage] = Field(default_factory=list)
+
+
+class PageContentResponse(BaseModel):
+    """GET /api/notion/page/{page_id} 응답 — 미리보기용 본문"""
+    markdown: str = Field(..., description="Notion 블록을 역변환한 마크다운")
+
+
+class PublishRequest(BaseModel):
+    """POST /api/publish/tistory 요청 바디"""
+    page_id: str = Field(..., description="발행할 Notion 페이지 ID")
+    tags: list[str] = Field(
+        default_factory=list,
+        description="티스토리 태그 (비우면 Notion 주제 키워드 사용)",
+    )
+
+
+class PublishResponse(BaseModel):
+    """POST /api/publish/tistory 응답 바디"""
+    url: str = Field(..., description="발행된 티스토리 글 URL")
+
+
 class HealthResponse(BaseModel):
     """
     GET /health 응답 바디

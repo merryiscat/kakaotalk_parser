@@ -376,6 +376,340 @@ async def save_report_to_notion(
             return {"error": f"Notion 저장 중 오류: {e}"}
 
 
+# ── 티스토리 발행 큐 (발행상태 속성 기반) ──
+
+
+def _find_publish_status_property(schema: dict[str, str]) -> str | None:
+    """
+    DB 스키마에서 발행상태로 쓸 select 속성의 이름을 찾습니다.
+
+    후보 이름과 타입 규칙은 _PROPERTY_CANDIDATES["publish_status"]와 동일합니다.
+    없으면 None — 발행 큐 기능을 쓸 수 없는 DB라는 뜻입니다.
+    """
+    candidates, allowed_types = _PROPERTY_CANDIDATES["publish_status"]
+    return next(
+        (name for name in candidates if schema.get(name) in allowed_types),
+        None,
+    )
+
+
+def _extract_page_summary(page: dict, schema: dict[str, str]) -> dict:
+    """
+    Notion 페이지 객체에서 앱 목록에 보여줄 요약 정보만 뽑아냅니다.
+
+    제목은 type이 "title"인 속성에서, 나머지는 _PROPERTY_CANDIDATES와
+    같은 후보 이름으로 찾습니다. 없는 속성은 빈 값으로 둡니다.
+    """
+    props = page.get("properties", {})
+
+    # 제목: type이 title인 속성을 찾아 plain_text 조각을 이어붙임
+    title = ""
+    for prop in props.values():
+        if prop.get("type") == "title":
+            title = "".join(
+                t.get("plain_text", "") for t in prop.get("title", [])
+            )
+            break
+
+    def _first_match(field: str):
+        """후보 이름 중 실제 존재하는 속성의 값 객체를 반환"""
+        candidates, _ = _PROPERTY_CANDIDATES[field]
+        for name in candidates:
+            if name in props:
+                return props[name]
+        return None
+
+    # 대화일자 (date 속성)
+    chat_date = ""
+    date_prop = _first_match("chat_date")
+    if date_prop and date_prop.get("date"):
+        chat_date = date_prop["date"].get("start", "")
+
+    # 채팅방 (rich_text 또는 select)
+    room_name = ""
+    room_prop = _first_match("room_name")
+    if room_prop:
+        if room_prop.get("type") == "rich_text":
+            room_name = "".join(
+                t.get("plain_text", "") for t in room_prop.get("rich_text", [])
+            )
+        elif room_prop.get("type") == "select" and room_prop.get("select"):
+            room_name = room_prop["select"].get("name", "")
+
+    # 주제 키워드 (multi_select)
+    keywords: list[str] = []
+    kw_prop = _first_match("keywords")
+    if kw_prop and kw_prop.get("multi_select"):
+        keywords = [opt.get("name", "") for opt in kw_prop["multi_select"]]
+
+    return {
+        "page_id": page.get("id", ""),
+        "title": title,
+        "chat_date": chat_date,
+        "room_name": room_name,
+        "keywords": keywords,
+        "notion_url": page.get("url", ""),
+    }
+
+
+async def query_pending_pages(
+    access_token: str,
+    database_id: str,
+    status: str = "초안",
+) -> dict:
+    """
+    발행상태가 [status]인 페이지 목록을 조회합니다 (티스토리 발행 대기 큐).
+
+    Returns:
+        {"pages": [{page_id, title, chat_date, room_name, keywords, notion_url}, ...]}
+        또는 {"error": "에러 메시지"}
+    """
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "Notion-Version": NOTION_VERSION,
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            schema = await _fetch_database_schema(client, headers, database_id)
+            status_prop = _find_publish_status_property(schema)
+            if status_prop is None:
+                return {
+                    "error": "Notion DB에 '발행상태'(select) 속성이 없습니다. "
+                    "DB에 select 타입으로 추가해 주세요."
+                }
+
+            pages: list[dict] = []
+            cursor: str | None = None
+            # 100개씩 페이지네이션 (발행 대기가 그 이상일 일은 드물지만 안전하게)
+            while True:
+                payload: dict = {
+                    "filter": {
+                        "property": status_prop,
+                        "select": {"equals": status},
+                    },
+                    "page_size": 100,
+                }
+                if cursor:
+                    payload["start_cursor"] = cursor
+
+                resp = await client.post(
+                    f"{NOTION_API_BASE}/databases/{database_id}/query",
+                    headers=headers,
+                    json=payload,
+                    timeout=30,
+                )
+                if resp.status_code != 200:
+                    detail = resp.json().get("message", resp.text)
+                    return {"error": f"Notion 조회 실패: {detail}"}
+
+                data = resp.json()
+                pages.extend(
+                    _extract_page_summary(page, schema)
+                    for page in data.get("results", [])
+                )
+                if not data.get("has_more"):
+                    break
+                cursor = data.get("next_cursor")
+
+            logger.info(f"발행 대기({status}) 페이지 {len(pages)}건 조회")
+            return {"pages": pages}
+        except Exception as e:
+            return {"error": f"Notion 조회 중 오류: {e}"}
+
+
+async def fetch_page_info(access_token: str, page_id: str) -> dict:
+    """
+    페이지 하나의 요약 정보(제목·날짜·키워드 등)를 조회합니다.
+
+    발행 시 티스토리 글 제목과 태그를 채우는 데 사용합니다.
+
+    Returns:
+        {page_id, title, chat_date, room_name, keywords, notion_url}
+        또는 {"error": "에러 메시지"}
+    """
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Notion-Version": NOTION_VERSION,
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(
+                f"{NOTION_API_BASE}/pages/{page_id}",
+                headers=headers,
+                timeout=15,
+            )
+            if resp.status_code != 200:
+                detail = resp.json().get("message", resp.text)
+                return {"error": f"Notion 페이지 조회 실패: {detail}"}
+            # _extract_page_summary는 페이지 객체의 속성만 읽으므로 스키마 불필요
+            return _extract_page_summary(resp.json(), {})
+        except Exception as e:
+            return {"error": f"Notion 페이지 조회 중 오류: {e}"}
+
+
+async def fetch_page_markdown(access_token: str, page_id: str) -> dict:
+    """
+    Notion 페이지 본문 블록을 모두 읽어 마크다운으로 역변환합니다.
+
+    티스토리 에디터가 마크다운 모드를 지원하므로 이 결과를 그대로 투입합니다.
+
+    Returns:
+        {"markdown": "..."} 또는 {"error": "에러 메시지"}
+    """
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Notion-Version": NOTION_VERSION,
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            blocks: list[dict] = []
+            cursor: str | None = None
+            # 블록 조회도 한 번에 최대 100개 — 긴 리포트는 이어서 조회
+            while True:
+                params = {"page_size": 100}
+                if cursor:
+                    params["start_cursor"] = cursor
+
+                resp = await client.get(
+                    f"{NOTION_API_BASE}/blocks/{page_id}/children",
+                    headers=headers,
+                    params=params,
+                    timeout=30,
+                )
+                if resp.status_code != 200:
+                    detail = resp.json().get("message", resp.text)
+                    return {"error": f"Notion 블록 조회 실패: {detail}"}
+
+                data = resp.json()
+                blocks.extend(data.get("results", []))
+                if not data.get("has_more"):
+                    break
+                cursor = data.get("next_cursor")
+
+            return {"markdown": _notion_blocks_to_markdown(blocks)}
+        except Exception as e:
+            return {"error": f"Notion 블록 조회 중 오류: {e}"}
+
+
+async def update_publish_status(
+    access_token: str,
+    database_id: str,
+    page_id: str,
+    status: str,
+) -> dict:
+    """
+    페이지의 발행상태 속성을 갱신합니다 (예: "초안" → "발행완료").
+
+    Returns:
+        {"ok": True} 또는 {"error": "에러 메시지"}
+    """
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "Notion-Version": NOTION_VERSION,
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            schema = await _fetch_database_schema(client, headers, database_id)
+            status_prop = _find_publish_status_property(schema)
+            if status_prop is None:
+                return {"error": "Notion DB에 '발행상태'(select) 속성이 없습니다."}
+
+            resp = await client.patch(
+                f"{NOTION_API_BASE}/pages/{page_id}",
+                headers=headers,
+                json={
+                    "properties": {
+                        status_prop: {"select": {"name": status}},
+                    }
+                },
+                timeout=15,
+            )
+            if resp.status_code != 200:
+                detail = resp.json().get("message", resp.text)
+                return {"error": f"발행상태 갱신 실패: {detail}"}
+
+            logger.info(f"발행상태 갱신 완료: {page_id} → {status}")
+            return {"ok": True}
+        except Exception as e:
+            return {"error": f"발행상태 갱신 중 오류: {e}"}
+
+
+def _rich_text_to_markdown(rich_texts: list[dict]) -> str:
+    """
+    Notion rich_text 배열을 마크다운 문자열로 역변환합니다.
+
+    _parse_rich_text의 역방향: bold → **텍스트**, link → [텍스트](url)
+    """
+    parts = []
+    for rt in rich_texts:
+        text = rt.get("plain_text", "") or rt.get("text", {}).get("content", "")
+        link = (rt.get("text") or {}).get("link") or rt.get("href")
+        if isinstance(link, dict):
+            link = link.get("url", "")
+        if rt.get("annotations", {}).get("bold"):
+            text = f"**{text}**"
+        if link:
+            text = f"[{text}]({link})"
+        parts.append(text)
+    return "".join(parts)
+
+
+def _notion_blocks_to_markdown(blocks: list[dict]) -> str:
+    """
+    Notion 블록 리스트를 마크다운으로 역변환합니다.
+
+    _markdown_to_notion_blocks가 만드는 블록 타입(heading/paragraph/
+    리스트/quote)을 모두 복원하고, 혹시 섞여 있을 수 있는
+    heading_1·code·divider도 처리합니다. 모르는 타입은 건너뜁니다.
+    """
+    lines: list[str] = []
+    numbered_index = 0  # 연속된 번호 리스트의 번호 추적
+
+    for block in blocks:
+        btype = block.get("type", "")
+        content = block.get(btype, {})
+        text = _rich_text_to_markdown(content.get("rich_text", []))
+
+        # 번호 리스트가 끊기면 번호를 초기화
+        if btype != "numbered_list_item":
+            numbered_index = 0
+
+        if btype == "heading_1":
+            lines.append(f"# {text}")
+        elif btype == "heading_2":
+            lines.append(f"## {text}")
+        elif btype == "heading_3":
+            lines.append(f"### {text}")
+        elif btype == "paragraph":
+            lines.append(text)
+        elif btype == "bulleted_list_item":
+            lines.append(f"- {text}")
+            continue  # 리스트 항목 사이에는 빈 줄을 넣지 않음
+        elif btype == "numbered_list_item":
+            numbered_index += 1
+            lines.append(f"{numbered_index}. {text}")
+            continue
+        elif btype == "quote":
+            lines.append(f"> {text}")
+        elif btype == "code":
+            lang = content.get("language", "")
+            lines.append(f"```{lang}\n{text}\n```")
+        elif btype == "divider":
+            lines.append("---")
+        else:
+            continue  # 지원하지 않는 블록은 건너뜀
+
+        lines.append("")  # 블록 사이 빈 줄
+
+    return "\n".join(lines).strip() + "\n"
+
+
 def _markdown_to_notion_blocks(markdown: str) -> list[dict]:
     """마크다운을 Notion 블록 리스트로 변환."""
     blocks = []

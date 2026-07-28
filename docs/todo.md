@@ -9,21 +9,26 @@
 - **정리된 문제점**: Card 남용/중첩, 5개 섹션 위계 평탄, BMJUA로 긴 본문 가독성 저하,
   7단계 파이프라인 대기 경험 부재
 
-### 티스토리 발행
-- **파일**: `tokbiseo-server/`(발행 엔드포인트 신규), `lib/screens/`(발행 화면 신규)
-- **현황**: 실행 환경만 준비됨 (Playwright + Chromium, `shm_size` 1gb)
-- **제약**: 티스토리 Open API가 2024년 2월 종료 — 글 작성 API 없음.
-  에디터 브라우저 자동화가 유일한 경로. 에디터는 마크다운 모드를 지원하므로
-  노션 마크다운을 그대로 투입 가능 (HTML 변환 불필요)
+### 티스토리 발행 — 실서버 검증
+- **현황**: 서버·앱 구현 완료 (v2.0.11) — 실제 발행 검증만 남음
 - **할 일**:
-  1. `GET /api/notion/pending` — 발행상태="초안" 페이지 조회
-  2. 노션 블록 → 마크다운 역변환
-  3. 앱 발행 화면 (목록·미리보기·발행)
-  4. `POST /api/publish/tistory` — Playwright 발행 후 발행상태를 "발행완료"로 PATCH
-- **주의**: 카카오 로그인 `storage_state`를 볼륨으로 영속화해야 함(재로그인 시 캡차),
-  티스토리 1일 발행 수 제한이 있어 큐를 한 번에 밀면 막힘
+  1. `.env`에 `TISTORY_BLOG_NAME` 설정
+  2. 로컬에서 `uv run python scripts/tistory_login.py` 실행 → 카카오 로그인
+     → `data/tistory_state.json` 생성 → 운영 서버 `tokbiseo-server/data/`에 업로드
+  3. 실발행 테스트 — **에디터 셀렉터가 실제와 다를 수 있음**
+     (`tistory_service.py` 상단 SEL_* 상수 확인, 실패 시 logs/에 스크린샷 저장됨)
+- **주의**: 티스토리 1일 발행 수 제한 → 앱이 한 건씩만 발행하도록 구현됨
 
 ## 완료
+
+### v2.0.11 티스토리 발행 기능 (2026-07-29)
+- 서버: `GET /api/notion/pending`(발행상태="초안" 조회), `GET /api/notion/page/{id}`(블록→마크다운 역변환),
+  `POST /api/publish/tistory`(Playwright 발행 → 발행상태 "발행완료" PATCH)
+- 서버: `tistory_service.py` — 마크다운 모드 에디터 자동화, 발행 직렬화 Lock,
+  세션 만료 감지, 실패 시 스크린샷 저장. 셀렉터는 SEL_* 상수로 모아둠
+- 서버: `scripts/tistory_login.py` — 로컬 헤드풀 로그인으로 storage_state 생성
+- docker-compose에 `./data:/app/data` 볼륨 추가 (세션 영속화), data/는 gitignore
+- 앱: 발행 탭 신규 (4탭) — 대기 목록·마크다운 미리보기·한 건씩 발행·완료 URL 표시
 
 ### v2.0.9 Notion 메타데이터 + 티스토리 발행 준비 (2026-07-28)
 - Notion 페이지 제목을 "방이름 — YYYY-MM-DD"로 생성

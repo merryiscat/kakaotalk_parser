@@ -44,14 +44,19 @@ Filter → Analyst → Supervisor → [Web Searcher ∥ YT Searcher] → Validat
 | `app/agents/state.py` | `AgentState` TypedDict — 노드 간 공유 상태. 토큰 카운트는 `Annotated[int, operator.add]`로 병렬 자동 합산 |
 | `app/agents/graph.py` | `build_graph()` — StateGraph 조립 및 컴파일 |
 | `app/agents/*.py` | 각 에이전트 노드 (`filter`, `analyst`, `supervisor`, `web_searcher`, `yt_searcher`, `validator`, `writer`) |
-| `app/schemas.py` | Pydantic 요청/응답 모델 (`SummarizeRequest`, `SummarizeResponse`) |
+| `app/schemas.py` | Pydantic 요청/응답 모델 (`SummarizeRequest`, `SummarizeResponse`, 발행 관련) |
 | `app/tools/` | 외부 API 래퍼 (`tavily_tool.py`, `youtube_tool.py`) |
-| `app/services/notion_service.py` | Notion OAuth 토큰 교환 + 리포트 저장 |
+| `app/services/notion_service.py` | Notion OAuth + 리포트 저장 + 발행 큐 조회/역변환/상태 갱신 |
+| `app/services/tistory_service.py` | Playwright 티스토리 에디터 자동화 발행 |
+| `scripts/tistory_login.py` | 로컬 헤드풀 로그인 → storage_state 세션 생성 (최초 1회) |
 
 ### API Endpoints
 
 - `POST /api/summarize` — 동기 분석 (blocking)
 - `POST /api/summarize-stream` — SSE 스트리밍 (노드 완료마다 이벤트 전송, 30초 keep-alive ping)
+- `GET /api/notion/pending` — 발행 대기(발행상태="초안") Notion 페이지 목록
+- `GET /api/notion/page/{page_id}` — 페이지 본문 마크다운 역변환 (미리보기)
+- `POST /api/publish/tistory` — 티스토리 발행 (Playwright) 후 발행상태 "발행완료" 갱신
 - `GET /auth/notion/callback` — Notion OAuth 콜백
 - `GET /health` — 헬스체크
 
