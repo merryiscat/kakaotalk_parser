@@ -61,7 +61,8 @@ tokbiseo-server/.venv/
 tokbiseo-server/__pycache__/
 tokbiseo-server/**/__pycache__/
 tokbiseo-server/.env
-tokbiseo-server/uv.lock
+# uv.lock은 추적한다 — Dockerfile이 COPY uv.lock + uv sync --frozen을 하므로
+# 저장소에 없으면 clean clone에서 빌드가 실패한다
 
 # OS
 Thumbs.db
