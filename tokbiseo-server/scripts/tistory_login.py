@@ -45,24 +45,32 @@ async def main():
 
         await page.goto(LOGIN_URL)
 
-        # 로그인 완료 감지: 티스토리 메인/관리 페이지 도착까지 대기 (최대 5분)
-        # 로그인하면 tistory.com으로 리다이렉트되고 로그인 쿠키가 생김
-        try:
-            await page.wait_for_url(
-                lambda url: (
-                    "tistory.com" in url
-                    and "auth/login" not in url
-                    and "accounts.kakao.com" not in url
-                ),
-                timeout=300_000,
-            )
-        except Exception:
+        # 로그인 완료 감지: 티스토리 "세션 쿠키"가 실제로 생길 때까지 대기 (최대 5분)
+        #
+        # 주의 — URL로 판단하면 안 됨:
+        #   카카오 로그인 후 티스토리로 돌아오는 리다이렉트 도중의 URL도
+        #   "tistory.com"을 포함하므로, URL만 보고 저장하면 티스토리 세션
+        #   쿠키(TSSESSION)가 심어지기 전에 저장돼 무효한 세션 파일이 됨.
+        #   (실제로 이 버그로 발행 시 "세션 만료" 에러가 났음)
+        # → 2초마다 쿠키를 직접 확인해 TSSESSION이 생겼을 때만 저장한다.
+        logged_in = False
+        for _ in range(150):  # 2초 × 150회 = 최대 5분
+            cookies = await context.cookies()
+            if any(
+                c["name"].startswith("TSSESSION") and "tistory.com" in c["domain"]
+                for c in cookies
+            ):
+                logged_in = True
+                break
+            await asyncio.sleep(2)
+
+        if not logged_in:
             print("\n[실패] 5분 안에 로그인이 감지되지 않았습니다. 다시 실행해 주세요.")
             await browser.close()
             return
 
-        # 리다이렉트 직후 쿠키가 모두 심어질 때까지 잠깐 대기
-        await page.wait_for_load_state("networkidle")
+        # 세션 쿠키 확인 후에도 나머지 쿠키가 다 심어지도록 잠깐 대기
+        await asyncio.sleep(3)
 
         STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
         await context.storage_state(path=str(STATE_PATH))

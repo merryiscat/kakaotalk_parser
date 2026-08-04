@@ -48,7 +48,12 @@ _publish_lock = asyncio.Lock()
 SEL_TITLE = "#post-title-inp"                    # 제목 입력창
 SEL_MODE_BTN = "#editor-mode-layer-btn-open"     # 에디터 모드 드롭다운 버튼
 SEL_MODE_MARKDOWN = "#editor-mode-markdown"      # 드롭다운의 "마크다운" 항목
-SEL_CODEMIRROR = ".CodeMirror"                   # 마크다운 편집기 (CodeMirror)
+# 마크다운 편집기 (CodeMirror)
+# 주의: 에디터 페이지에는 CodeMirror가 2개 있음 (HTML 모드용 숨김 + 마크다운용).
+# ":visible"로 화면에 보이는 쪽만 잡아야 함 — 첫 번째는 숨겨진 HTML용이라
+# 그냥 ".CodeMirror"로 기다리면 타임아웃 남 (실발행 테스트에서 확인)
+SEL_CODEMIRROR = ".CodeMirror"
+SEL_CODEMIRROR_VISIBLE = ".CodeMirror:visible"
 SEL_TAG_INPUT = "#tagText"                       # 태그 입력창
 SEL_PUBLISH_LAYER_BTN = "#publish-layer-btn-open"  # "완료" 버튼 (발행 레이어 열기)
 SEL_PUBLIC_RADIO = "#open20"                     # 발행 레이어의 "공개" 라디오
@@ -152,7 +157,7 @@ async def _publish_with_browser(
             await page.click(SEL_MODE_BTN, timeout=10000)
             await page.click(SEL_MODE_MARKDOWN, timeout=5000)
             # 모드 전환 확인 대화상자는 위의 dialog 핸들러가 자동 승인
-            await page.wait_for_selector(SEL_CODEMIRROR, timeout=10000)
+            await page.wait_for_selector(SEL_CODEMIRROR_VISIBLE, timeout=10000)
 
             # ── 2. 제목 입력 ──
             await page.fill(SEL_TITLE, title)
@@ -160,10 +165,13 @@ async def _publish_with_browser(
             # ── 3. 본문 입력 ──
             # CodeMirror는 일반 textarea가 아니라 fill()이 통하지 않음
             # → CodeMirror 인스턴스의 setValue()를 직접 호출
+            # querySelector는 숨겨진 HTML용 에디터를 잡을 수 있으므로
+            # 화면에 보이는(offsetParent가 있는) 에디터를 골라서 주입
             await page.evaluate(
                 """([selector, content]) => {
-                    const cm = document.querySelector(selector).CodeMirror;
-                    cm.setValue(content);
+                    const editors = [...document.querySelectorAll(selector)];
+                    const visible = editors.find(el => el.offsetParent !== null);
+                    (visible || editors[0]).CodeMirror.setValue(content);
                 }""",
                 [SEL_CODEMIRROR, markdown],
             )
