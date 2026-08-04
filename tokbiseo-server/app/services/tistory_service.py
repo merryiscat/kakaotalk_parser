@@ -55,7 +55,8 @@ SEL_MODE_MARKDOWN = "#editor-mode-markdown"      # 드롭다운의 "마크다운
 SEL_CODEMIRROR = ".CodeMirror"
 SEL_CODEMIRROR_VISIBLE = ".CodeMirror:visible"
 SEL_TAG_INPUT = "#tagText"                       # 태그 입력창
-SEL_PUBLISH_LAYER_BTN = "#publish-layer-btn-open"  # "완료" 버튼 (발행 레이어 열기)
+# "완료" 버튼 (발행 레이어 열기) — 실제 id는 "-open" 접미사가 없음 (실발행 테스트에서 확인)
+SEL_PUBLISH_LAYER_BTN = "#publish-layer-btn"
 SEL_PUBLIC_RADIO = "#open20"                     # 발행 레이어의 "공개" 라디오
 SEL_PUBLISH_BTN = "#publish-btn"                 # 최종 "공개 발행" 버튼
 
