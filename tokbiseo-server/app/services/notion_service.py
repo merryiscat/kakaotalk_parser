@@ -489,6 +489,11 @@ async def query_pending_pages(
                         "property": status_prop,
                         "select": {"equals": status},
                     },
+                    # 최신 생성 순 정렬 — 목록 첫 번째가 가장 최근 리포트가 되도록
+                    # (일일 배치가 "가장 최신 미발행 글 1건"을 고르는 기준)
+                    "sorts": [
+                        {"timestamp": "created_time", "direction": "descending"}
+                    ],
                     "page_size": 100,
                 }
                 if cursor:

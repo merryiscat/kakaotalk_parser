@@ -99,7 +99,15 @@ async def lifespan(app: FastAPI):
 
     _graph = build_graph()
     logger.info("멀티에이전트 그래프 빌드 완료")
+
+    # 티스토리 일일 자동 발행 배치 시작 (매일 오전 9시, KST)
+    import asyncio
+
+    batch_task = asyncio.create_task(_tistory_batch_loop())
+
     yield
+
+    batch_task.cancel()
     logger.info("서버 종료")
 
 
@@ -503,51 +511,150 @@ async def notion_page_content(page_id: str):
     return PageContentResponse(markdown=result["markdown"])
 
 
-@app.post("/api/publish/tistory", response_model=PublishResponse)
-async def publish_tistory(request: PublishRequest):
+async def _publish_notion_page(page_id: str, tags: list[str] | None = None) -> dict:
     """
-    Notion 페이지 한 건을 티스토리에 발행합니다.
+    Notion 페이지 한 건을 티스토리에 발행하는 공통 로직.
+
+    앱의 수동 발행 엔드포인트와 일일 자동 배치가 함께 사용합니다.
 
     흐름: 페이지 정보·본문 조회 → Playwright로 에디터 자동화 발행
           → 성공 시 Notion 발행상태를 "발행완료"로 갱신
 
-    주의: 티스토리 1일 발행 수 제한이 있으므로 앱에서 한 건씩 호출하세요.
+    Returns:
+        {"url": "발행된 주소"} 또는 {"error": "에러 메시지"}
     """
     token, db = _notion_credentials()
 
     # 발행 설정(블로그 이름·로그인 세션)이 안 돼 있으면 바로 안내
     config_error = tistory_service.is_configured()
     if config_error:
-        raise HTTPException(status_code=400, detail=config_error)
+        return {"error": config_error}
 
     # 1. 페이지 제목·키워드 조회
-    info = await fetch_page_info(token, request.page_id)
+    info = await fetch_page_info(token, page_id)
     if "error" in info:
-        raise HTTPException(status_code=502, detail=info["error"])
+        return {"error": info["error"]}
 
     # 2. 본문 마크다운 역변환
-    content = await fetch_page_markdown(token, request.page_id)
+    content = await fetch_page_markdown(token, page_id)
     if "error" in content:
-        raise HTTPException(status_code=502, detail=content["error"])
+        return {"error": content["error"]}
 
     markdown = content["markdown"].strip()
     if not markdown:
-        raise HTTPException(status_code=400, detail="페이지 본문이 비어있습니다.")
+        return {"error": "페이지 본문이 비어있습니다."}
 
-    # 3. Playwright 발행 (태그를 앱에서 안 보냈으면 Notion 키워드 사용)
+    # 3. Playwright 발행 (태그를 안 보냈으면 Notion 키워드 사용)
     title = info.get("title") or "톡비서 리포트"
-    tags = request.tags or info.get("keywords", [])
+    tags = tags or info.get("keywords", [])
     logger.info(f"티스토리 발행 시작: {title} (태그 {len(tags)}개)")
 
     result = await tistory_service.publish_post(title, markdown, tags)
     if "error" in result:
-        raise HTTPException(status_code=502, detail=result["error"])
+        return {"error": result["error"]}
 
     # 4. 발행상태 갱신 — 실패해도 발행 자체는 성공이므로 경고만 남김
-    status_result = await update_publish_status(
-        token, db, request.page_id, "발행완료"
-    )
+    status_result = await update_publish_status(token, db, page_id, "발행완료")
     if "error" in status_result:
         logger.warning(f"발행상태 갱신 실패 (글은 발행됨): {status_result['error']}")
 
+    return {"url": result["url"], "title": title}
+
+
+@app.post("/api/publish/tistory", response_model=PublishResponse)
+async def publish_tistory(request: PublishRequest):
+    """
+    Notion 페이지 한 건을 티스토리에 발행합니다 (앱 발행 탭에서 호출).
+
+    주의: 티스토리 1일 발행 수 제한이 있으므로 앱에서 한 건씩 호출하세요.
+    """
+    result = await _publish_notion_page(request.page_id, request.tags)
+    if "error" in result:
+        raise HTTPException(status_code=502, detail=result["error"])
     return PublishResponse(url=result["url"])
+
+
+# ── 일일 자동 발행 배치 ──
+
+
+async def _run_tistory_batch() -> dict:
+    """
+    발행 대기(발행상태="초안") 중 가장 최신 리포트 1건을 티스토리에 발행합니다.
+
+    티스토리 1일 발행 수 제한 때문에 한 번에 1건만 발행합니다.
+    발행할 글이 없으면 조용히 넘어갑니다.
+
+    Returns:
+        {"url", "title"} (발행 성공) / {"skipped": 사유} / {"error": 메시지}
+    """
+    try:
+        token, db = _notion_credentials()
+    except HTTPException as e:
+        return {"skipped": f"Notion 미설정 — {e.detail}"}
+
+    config_error = tistory_service.is_configured()
+    if config_error:
+        return {"skipped": f"티스토리 미설정 — {config_error}"}
+
+    pending = await query_pending_pages(token, db)
+    if "error" in pending:
+        return {"error": pending["error"]}
+
+    pages = pending["pages"]
+    if not pages:
+        return {"skipped": "발행 대기 글 없음"}
+
+    # 목록이 최신 생성 순이므로 첫 번째가 가장 최근 리포트
+    target = pages[0]
+    logger.info(f"[배치] 발행 대상: {target['title']} ({target['page_id']})")
+    return await _publish_notion_page(target["page_id"])
+
+
+@app.post("/api/publish/tistory/batch")
+async def publish_tistory_batch():
+    """
+    일일 배치를 수동으로 1회 실행 — 배치 동작 테스트용.
+    """
+    result = await _run_tistory_batch()
+    if "error" in result:
+        raise HTTPException(status_code=502, detail=result["error"])
+    return result
+
+
+async def _tistory_batch_loop():
+    """
+    매일 지정 시각(기본 오전 9시, TISTORY_BATCH_HOUR로 변경 가능)에
+    발행 배치를 실행하는 백그라운드 루프.
+
+    컨테이너 타임존이 Asia/Seoul로 고정돼 있어 로컬 시각 기준 9시 = KST 9시.
+    """
+    import asyncio
+
+    hour = int(os.getenv("TISTORY_BATCH_HOUR", "9"))
+
+    while True:
+        # 다음 실행 시각까지 남은 시간 계산
+        now = datetime.now()
+        next_run = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+        if next_run <= now:
+            from datetime import timedelta
+
+            next_run += timedelta(days=1)
+        wait_seconds = (next_run - now).total_seconds()
+        logger.info(
+            f"[배치] 다음 티스토리 자동 발행: {next_run:%Y-%m-%d %H:%M} "
+            f"({wait_seconds / 3600:.1f}시간 후)"
+        )
+        await asyncio.sleep(wait_seconds)
+
+        try:
+            result = await _run_tistory_batch()
+            if "url" in result:
+                logger.info(f"[배치] 발행 완료: {result.get('title')} → {result['url']}")
+            elif "skipped" in result:
+                logger.info(f"[배치] 건너뜀: {result['skipped']}")
+            else:
+                logger.error(f"[배치] 발행 실패: {result.get('error')}")
+        except Exception as e:
+            # 배치 1회 실패가 루프 자체를 죽이지 않도록 방어
+            logger.error(f"[배치] 실행 중 예외: {e}", exc_info=True)

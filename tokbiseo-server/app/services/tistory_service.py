@@ -11,6 +11,7 @@
 .env 필요 항목:
 - TISTORY_BLOG_NAME: 블로그 이름 (예: "myblog" → myblog.tistory.com)
 - TISTORY_STORAGE_STATE: 로그인 세션 파일 경로 (기본 data/tistory_state.json)
+- TISTORY_CATEGORY: 글을 넣을 카테고리 이름 (선택, 없으면 기본 카테고리)
 
 로그인 세션 준비 (최초 1회):
   카카오 로그인은 캡차 때문에 자동화할 수 없습니다.
@@ -55,6 +56,8 @@ SEL_MODE_MARKDOWN = "#editor-mode-markdown"      # 드롭다운의 "마크다운
 SEL_CODEMIRROR = ".CodeMirror"
 SEL_CODEMIRROR_VISIBLE = ".CodeMirror:visible"
 SEL_TAG_INPUT = "#tagText"                       # 태그 입력창
+SEL_CATEGORY_BTN = "#category-btn"               # 카테고리 드롭다운 버튼 (에디터 상단)
+SEL_CATEGORY_ITEM = "div.mce-menu-item"          # 드롭다운의 카테고리 항목
 # "완료" 버튼 (발행 레이어 열기) — 실제 id는 "-open" 접미사가 없음 (실발행 테스트에서 확인)
 SEL_PUBLISH_LAYER_BTN = "#publish-layer-btn"
 SEL_PUBLIC_RADIO = "#open20"                     # 발행 레이어의 "공개" 라디오
@@ -153,6 +156,21 @@ async def _publish_with_browser(
                     "error": "티스토리 로그인 세션이 만료되었습니다. "
                     "로컬에서 scripts/tistory_login.py로 세션을 다시 만들어 주세요."
                 }
+
+            # ── 0. 카테고리 선택 (설정돼 있을 때만, 실패해도 발행은 계속) ──
+            category = os.getenv("TISTORY_CATEGORY", "").strip()
+            if category:
+                try:
+                    await page.click(SEL_CATEGORY_BTN, timeout=5000)
+                    # 하위 카테고리는 "- 이름" 형태로 표시되므로 부분 일치로 찾음
+                    await page.locator(
+                        SEL_CATEGORY_ITEM, has_text=category
+                    ).first.click(timeout=5000)
+                    logger.info(f"카테고리 선택: {category}")
+                except Exception as e:
+                    logger.warning(
+                        f"카테고리 선택 실패 (기본 카테고리로 발행 계속): {category} — {e}"
+                    )
 
             # ── 1. 마크다운 모드로 전환 ──
             await page.click(SEL_MODE_BTN, timeout=10000)
