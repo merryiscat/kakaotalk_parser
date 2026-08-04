@@ -164,18 +164,28 @@ async def _publish_with_browser(
             await page.fill(SEL_TITLE, title)
 
             # ── 3. 본문 입력 ──
-            # CodeMirror는 일반 textarea가 아니라 fill()이 통하지 않음
-            # → CodeMirror 인스턴스의 setValue()를 직접 호출
-            # querySelector는 숨겨진 HTML용 에디터를 잡을 수 있으므로
-            # 화면에 보이는(offsetParent가 있는) 에디터를 골라서 주입
-            await page.evaluate(
-                """([selector, content]) => {
+            # CodeMirror는 일반 textarea가 아니라 fill()이 통하지 않음.
+            # 주의: CodeMirror.setValue()로 넣으면 화면에는 보이지만 티스토리
+            # 앱 내부 상태에 반영되지 않아 "빈 본문"으로 발행됨 (실발행에서 확인).
+            # → 에디터를 클릭해 포커스한 뒤, 실제 타이핑과 동일한 입력 이벤트를
+            #   만드는 keyboard.insert_text()로 본문을 주입한다.
+            await page.click(SEL_CODEMIRROR_VISIBLE)
+            await page.keyboard.insert_text(markdown)
+
+            # 주입 결과 검증 — 에디터가 실제로 본문을 들고 있는지 확인
+            injected_len = await page.evaluate(
+                """(selector) => {
                     const editors = [...document.querySelectorAll(selector)];
                     const visible = editors.find(el => el.offsetParent !== null);
-                    (visible || editors[0]).CodeMirror.setValue(content);
+                    return (visible || editors[0]).CodeMirror.getValue().length;
                 }""",
-                [SEL_CODEMIRROR, markdown],
+                SEL_CODEMIRROR,
             )
+            if injected_len < len(markdown) * 0.9:
+                return {
+                    "error": f"본문 주입 실패: 에디터에 {injected_len}자만 들어감 "
+                    f"(기대 {len(markdown)}자)"
+                }
 
             # ── 4. 태그 입력 (있을 때만, 실패해도 발행은 계속) ──
             for tag in tags[:10]:
