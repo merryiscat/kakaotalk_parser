@@ -9,17 +9,30 @@
 - **정리된 문제점**: Card 남용/중첩, 5개 섹션 위계 평탄, BMJUA로 긴 본문 가독성 저하,
   7단계 파이프라인 대기 경험 부재
 
-### 티스토리 발행 — 실서버 검증
-- **현황**: 서버·앱 구현 완료 (v2.0.11) — 실제 발행 검증만 남음
-- **할 일**:
-  1. `.env`에 `TISTORY_BLOG_NAME` 설정
-  2. 로컬에서 `uv run python scripts/tistory_login.py` 실행 → 카카오 로그인
-     → `data/tistory_state.json` 생성 → 운영 서버 `tokbiseo-server/data/`에 업로드
-  3. 실발행 테스트 — **에디터 셀렉터가 실제와 다를 수 있음**
-     (`tistory_service.py` 상단 SEL_* 상수 확인, 실패 시 logs/에 스크린샷 저장됨)
-- **주의**: 티스토리 1일 발행 수 제한 → 앱이 한 건씩만 발행하도록 구현됨
+### 티스토리 발행 — 후속 개선 (검증은 완료)
+- **발행 URL 반환값**: 현재 발행 후 `page.url`을 반환하는데 실제로는 글 주소가 아니라
+  관리 페이지(`/manage/posts/`)가 잡힘 → 발행된 글 실주소를 얻으려면 별도 처리 필요
+- **카테고리 선택**: 현재 미구현이라 기본 카테고리로 들어감.
+  발행 레이어에 카테고리 드롭다운 있음 (dump_editor_selectors.py로 확인 가능)
+- **Dockerfile 레이어 최적화**: 코드 한 줄만 바뀌어도 Playwright Chromium(~300MB)을
+  매번 재다운로드함 → 브라우저 설치 레이어를 코드 COPY 앞으로 이동
+- **Notion 스키마 캐시**: 서버가 DB 스키마를 프로세스 수명 동안 캐시
+  (`notion_service.py`의 `_schema_cache`) → DB 속성 변경 시 서버 재시작 필요
 
 ## 완료
+
+### v2.0.12~13 티스토리 실서버 검증 완료 (2026-08-04)
+- **첫 실발행 성공**: Notion "초안" → 티스토리 공개 발행 → "발행완료" 갱신 전 과정 확인
+- 검증 중 발견한 버그 수정:
+  - `tistory_login.py`: 리다이렉트 도중 세션을 저장해 TSSESSION 쿠키가 빠지던 버그
+    → 쿠키 폴링 방식으로 변경 (v2.0.12)
+  - `tistory_service.py`: CodeMirror 2개 중 숨겨진 것을 잡던 문제 → `:visible` 필터 (v2.0.12)
+  - `tistory_service.py`: "완료" 버튼 실제 id는 `#publish-layer-btn` ("-open" 없음) (v2.0.13)
+- Notion DB에 `발행상태` select 속성(초안/발행완료) 추가
+- 진단 도구 추가: `scripts/test_session_local.py`(세션 유효성 검증),
+  `scripts/dump_editor_selectors.py`(에디터 셀렉터 확인)
+- 운영 배포 절차 확인: 서버(192.168.50.205)에서 `git pull` 후 반드시
+  `docker compose up -d --build` (git pull만으로는 미반영). `.env`·`data/`는 scp로 별도 업로드
 
 ### v2.0.11 티스토리 발행 기능 (2026-07-29)
 - 서버: `GET /api/notion/pending`(발행상태="초안" 조회), `GET /api/notion/page/{id}`(블록→마크다운 역변환),
