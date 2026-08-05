@@ -19,6 +19,8 @@
   세션이 storage_state 파일로 저장됩니다. 이 파일을 운영 서버의
   tokbiseo-server/data/ 에 올려두면 (docker-compose가 /app/data로 마운트)
   재로그인 없이 발행이 동작합니다.
+  이후에는 발행할 때마다 갱신된 쿠키를 파일에 되써서 세션을 자동 연장합니다
+  (그래도 카카오 쪽 절대 만료 등으로 세션이 죽으면 위 절차로 재로그인).
 
 주의:
 - 티스토리는 1일 발행 수 제한이 있습니다. 큐를 한 번에 밀지 말고
@@ -156,6 +158,18 @@ async def _publish_with_browser(
                     "error": "티스토리 로그인 세션이 만료되었습니다. "
                     "로컬에서 scripts/tistory_login.py로 세션을 다시 만들어 주세요."
                 }
+
+            # ── 세션 자동 연장 ──
+            # 에디터 접속에 성공했다는 건 방금 서버가 갱신된 쿠키를 내려줬다는 뜻.
+            # 이 시점의 쿠키를 세션 파일에 되써두면 매일 배치가 돌 때마다
+            # 만료 시점이 뒤로 밀려서, 수동 재로그인 빈도가 크게 줄어든다.
+            # (로그인 페이지로 튕긴 경우는 위에서 이미 반환했으므로,
+            #  로그아웃 상태로 파일을 덮어쓸 위험은 없음)
+            try:
+                await context.storage_state(path=str(state_path))
+                logger.info("티스토리 세션 쿠키 갱신 저장 완료")
+            except Exception as e:
+                logger.warning(f"세션 쿠키 갱신 저장 실패 (발행은 계속): {e}")
 
             # ── 0. 카테고리 선택 (설정돼 있을 때만, 실패해도 발행은 계속) ──
             category = os.getenv("TISTORY_CATEGORY", "").strip()
