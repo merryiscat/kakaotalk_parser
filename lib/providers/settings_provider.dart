@@ -9,6 +9,10 @@ class SettingsState {
   /// 멀티에이전트 서버 URL (예: "http://192.168.0.10:3936")
   final String serverUrl;
 
+  /// 서버 접근 토큰 — 모든 /api/* 요청의 X-API-Key 헤더로 전송
+  /// (서버가 인터넷에 노출돼 있어 이 토큰 없이는 401로 거부됨)
+  final String serverApiKey;
+
   /// Tavily 웹 검색 API 키
   final String tavilyApiKey;
 
@@ -18,6 +22,7 @@ class SettingsState {
   const SettingsState({
     this.apiKey = '',
     this.serverUrl = '',
+    this.serverApiKey = '',
     this.tavilyApiKey = '',
     this.youtubeApiKey = '',
   });
@@ -25,12 +30,14 @@ class SettingsState {
   SettingsState copyWith({
     String? apiKey,
     String? serverUrl,
+    String? serverApiKey,
     String? tavilyApiKey,
     String? youtubeApiKey,
   }) {
     return SettingsState(
       apiKey: apiKey ?? this.apiKey,
       serverUrl: serverUrl ?? this.serverUrl,
+      serverApiKey: serverApiKey ?? this.serverApiKey,
       tavilyApiKey: tavilyApiKey ?? this.tavilyApiKey,
       youtubeApiKey: youtubeApiKey ?? this.youtubeApiKey,
     );
@@ -55,11 +62,13 @@ class SettingsNotifier extends Notifier<SettingsState> {
     final prefs = await SharedPreferences.getInstance();
     final apiKey = prefs.getString('api_key') ?? '';
     final serverUrl = prefs.getString('agent_server_url') ?? '';
+    final serverApiKey = prefs.getString('server_api_key') ?? '';
     final tavilyApiKey = prefs.getString('tavily_api_key') ?? '';
     final youtubeApiKey = prefs.getString('youtube_api_key') ?? '';
     state = SettingsState(
       apiKey: apiKey,
       serverUrl: serverUrl,
+      serverApiKey: serverApiKey,
       tavilyApiKey: tavilyApiKey,
       youtubeApiKey: youtubeApiKey,
     );
@@ -77,6 +86,13 @@ class SettingsNotifier extends Notifier<SettingsState> {
     state = state.copyWith(serverUrl: url);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('agent_server_url', url);
+  }
+
+  /// 서버 접근 토큰 저장 (X-API-Key)
+  Future<void> setServerApiKey(String key) async {
+    state = state.copyWith(serverApiKey: key);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('server_api_key', key);
   }
 
   /// Tavily API 키 저장

@@ -21,6 +21,21 @@
 
 ## 완료
 
+### v2.0.18 서버 API 인증 (X-API-Key) — 인터넷 노출 대응 (2026-08-07)
+- **배경**: 공유기 포트포워딩(3936)으로 서버가 인터넷에 노출 → 무인증 상태였음
+- **서버** (`app/main.py`, 별도 세션에서 작업):
+  - `/docs`·`/redoc`·`/openapi.json` 비활성화 (구조 노출 방지)
+  - `/api/*` 전체(7개 라우트)에 `X-API-Key` 헤더 인증 — `secrets.compare_digest` 비교,
+    서버에 `TALKBISEO_API_KEY` 미설정이면 fail-closed(503)
+  - `/health`·`/auth/notion/callback`만 공개 유지
+- **앱** (이 세션에서 작업):
+  - 설정 화면에 "서버 접근 토큰" 입력란 추가 (`settings_provider`에 `serverApiKey` 저장)
+  - `AgentApiService`·`PublishApiService`의 모든 `/api/*` 호출에 `X-API-Key` 헤더 전송
+  - `/health` 연결 테스트는 토큰 불필요 (공개 엔드포인트)
+- **주의**: 서버 배포 + 앱 재빌드 + 앱 설정에 토큰 입력, 3가지가 모두 돼야 요약/발행 동작.
+  토큰이 다르면 401, 서버 .env에 토큰이 없으면 503
+- 후속 TODO: CORS `allow_origins=["*"]` → 필요 출처만 허용으로 축소
+
 ### v2.0.17 티스토리 세션 3단 방어 — keep-alive + 자동 재로그인 (2026-08-06)
 - **문제**: 8/6 00시에 새로 만든 세션이 반나절도 안 돼 만료 (로컬 원본도 동반 사망 확인
   → 업로드 문제 아님). 세션 수명이 배치 간격(24h)보다 짧아 v2.0.16 되쓰기 방식은

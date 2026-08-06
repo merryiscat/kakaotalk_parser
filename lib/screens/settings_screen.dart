@@ -19,6 +19,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   /// 멀티에이전트 서버 URL 입력 컨트롤러
   late TextEditingController _serverUrlController;
 
+  /// 서버 접근 토큰(X-API-Key) 입력 컨트롤러
+  late TextEditingController _serverApiKeyController;
+
   /// Tavily API 키 입력 컨트롤러
   late TextEditingController _tavilyKeyController;
 
@@ -35,6 +38,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // 현재 저장된 값들로 초기화
     _apiKeyController = TextEditingController(text: settings.apiKey);
     _serverUrlController = TextEditingController(text: settings.serverUrl);
+    _serverApiKeyController =
+        TextEditingController(text: settings.serverApiKey);
     _tavilyKeyController = TextEditingController(text: settings.tavilyApiKey);
     _youtubeKeyController =
         TextEditingController(text: settings.youtubeApiKey);
@@ -56,10 +61,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // 화면을 떠날 때 입력 중이던 값들을 자동 저장
     _saveApiKey();
     _saveServerUrl();
+    _saveServerApiKey();
     _saveTavilyKey();
     _saveYoutubeKey();
     _apiKeyController.dispose();
     _serverUrlController.dispose();
+    _serverApiKeyController.dispose();
     _tavilyKeyController.dispose();
     _youtubeKeyController.dispose();
     super.dispose();
@@ -98,6 +105,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final savedUrl = ref.read(settingsProvider).serverUrl;
     if (currentText != savedUrl) {
       ref.read(settingsProvider.notifier).setServerUrl(currentText);
+    }
+  }
+
+  /// 서버 접근 토큰(X-API-Key)을 provider에 저장
+  void _saveServerApiKey() {
+    final currentText = _serverApiKeyController.text.trim();
+    final savedKey = ref.read(settingsProvider).serverApiKey;
+    if (currentText != savedKey) {
+      ref.read(settingsProvider.notifier).setServerApiKey(currentText);
     }
   }
 
@@ -197,6 +213,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
     if (_serverUrlController.text != settings.serverUrl) {
       _serverUrlController.text = settings.serverUrl;
+    }
+    if (_serverApiKeyController.text != settings.serverApiKey) {
+      _serverApiKeyController.text = settings.serverApiKey;
     }
     if (_tavilyKeyController.text != settings.tavilyApiKey) {
       _tavilyKeyController.text = settings.tavilyApiKey;
@@ -305,6 +324,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        // ── 서버 접근 토큰 (X-API-Key) ──
+        // 서버가 인터넷에 노출돼 있어 모든 /api/* 요청에 이 토큰이 필요합니다.
+        // 서버 .env의 TALKBISEO_API_KEY와 같은 값을 입력해야 합니다.
+        TextField(
+          controller: _serverApiKeyController,
+          obscureText: true,
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: '서버 접근 토큰 (X-API-Key)',
+            hintText: '서버 .env의 TALKBISEO_API_KEY 값',
+            isDense: true,
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.save, size: 18),
+              tooltip: '저장',
+              onPressed: () {
+                _saveServerApiKey();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('서버 접근 토큰이 저장되었습니다')),
+                );
+              },
+            ),
+          ),
+          onSubmitted: (_) {
+            _saveServerApiKey();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('서버 접근 토큰이 저장되었습니다')),
+            );
+          },
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '요약·발행 요청이 401로 거부되면 이 토큰이 서버와 다른 것입니다',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
         ),
         const SizedBox(height: 8),
         // 서버 연결 상태 표시

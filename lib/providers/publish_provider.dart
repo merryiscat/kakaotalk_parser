@@ -64,9 +64,13 @@ class PublishNotifier extends Notifier<PublishState> {
   Future<PublishApiService?> _service() async {
     // SharedPreferences 로딩이 끝나기 전에 접근하는 race condition 방지
     await ref.read(settingsProvider.notifier).ensureLoaded();
-    final serverUrl = ref.read(settingsProvider).serverUrl.trim();
+    final settings = ref.read(settingsProvider);
+    final serverUrl = settings.serverUrl.trim();
     if (serverUrl.isEmpty) return null;
-    return PublishApiService(serverUrl: serverUrl);
+    return PublishApiService(
+      serverUrl: serverUrl,
+      serverApiKey: settings.serverApiKey.trim(),
+    );
   }
 
   /// 발행 대기 목록을 새로 불러옵니다 (화면 진입·새로고침 시).

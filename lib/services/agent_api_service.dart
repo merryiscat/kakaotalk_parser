@@ -58,6 +58,10 @@ class AgentApiService {
   /// 서버에서 유튜브 검색에 사용할 YouTube API 키
   final String youtubeApiKey;
 
+  /// 서버 접근 토큰 — /api/* 요청의 X-API-Key 헤더로 전송
+  /// (서버가 인터넷에 노출돼 있어 이 토큰이 없으면 401로 거부됨)
+  final String serverApiKey;
+
   /// API 요청 타임아웃 — 멀티에이전트 파이프라인은 시간이 걸리므로 300초
   final Duration timeout;
 
@@ -66,8 +70,15 @@ class AgentApiService {
     required this.openaiApiKey,
     required this.tavilyApiKey,
     required this.youtubeApiKey,
+    this.serverApiKey = '',
     this.timeout = const Duration(seconds: 300),
   });
+
+  /// /api/* 요청 공통 헤더 (Content-Type + 서버 접근 토큰)
+  Map<String, String> get _apiHeaders => {
+        'Content-Type': 'application/json',
+        if (serverApiKey.isNotEmpty) 'X-API-Key': serverApiKey,
+      };
 
   /// 요약 요청 바디를 구성합니다 (summarize / summarizeStream 공통)
   ///
@@ -150,7 +161,7 @@ class AgentApiService {
       final response = await http
           .post(
             Uri.parse('$serverUrl/api/summarize'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _apiHeaders,
             body: body,
           )
           .timeout(timeout);
@@ -208,7 +219,7 @@ class AgentApiService {
         'POST',
         Uri.parse('$baseUrl/api/summarize-stream'),
       );
-      request.headers['Content-Type'] = 'application/json';
+      request.headers.addAll(_apiHeaders);
       request.body = _buildRequestBody(
         messagesText,
         urlTitles,

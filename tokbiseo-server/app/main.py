@@ -17,9 +17,12 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 
+import secrets
+
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
 from sse_starlette.sse import EventSourceResponse
 
 from .schemas import (
@@ -119,6 +122,10 @@ app = FastAPI(
     description="카카오톡 대화를 멀티에이전트 파이프라인으로 분석하여 구체적 리포트를 생성합니다.",
     version="0.1.0",
     lifespan=lifespan,
+    # 인터넷 노출 서버이므로 API 문서/스펙 페이지를 비활성화 (구조 노출 방지)
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 # CORS 설정 — Flutter 앱에서 접근 가능하도록
@@ -129,6 +136,33 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── API 접근 인증 ──
+# 이 서버는 공유기 포트포워딩(3936)으로 인터넷에 노출돼 있으므로,
+# /api/* 엔드포인트는 X-API-Key 헤더로 보호한다.
+# (/health 와 /auth/notion/callback 은 인증 없이 열어둠 — 각각 상태확인·OAuth 콜백용)
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def require_api_key(key: str = Depends(_api_key_header)) -> None:
+    """요청 헤더의 X-API-Key가 서버 토큰과 일치하는지 검사한다.
+
+    - 서버에 TALKBISEO_API_KEY가 설정돼 있지 않으면 fail-closed(503)로 막는다.
+      (실수로 무인증 상태가 인터넷에 열리는 것을 방지)
+    - 비교는 secrets.compare_digest로 수행해 타이밍 공격을 막는다.
+    """
+    server_key = os.getenv("TALKBISEO_API_KEY", "")
+    if not server_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="서버에 TALKBISEO_API_KEY가 설정되지 않았습니다 (.env 확인).",
+        )
+    if not key or not secrets.compare_digest(key, server_key):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="유효한 X-API-Key 헤더가 필요합니다.",
+        )
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -244,7 +278,11 @@ async def _save_to_notion(
         logger.info(f"Notion 저장 완료: {result.get('url', '')}")
 
 
-@app.post("/api/summarize", response_model=SummarizeResponse)
+@app.post(
+    "/api/summarize",
+    response_model=SummarizeResponse,
+    dependencies=[Depends(require_api_key)],
+)
 async def summarize(request: SummarizeRequest):
     """
     카카오톡 대화를 멀티에이전트 파이프라인으로 분석합니다.
@@ -339,7 +377,7 @@ NODE_DISPLAY_NAMES = {
 TOTAL_STEPS = 7
 
 
-@app.post("/api/summarize-stream")
+@app.post("/api/summarize-stream", dependencies=[Depends(require_api_key)])
 async def summarize_stream(request: SummarizeRequest):
     """
     SSE 스트리밍 버전 — 노드 완료마다 진행 이벤트 전송.
@@ -488,7 +526,11 @@ def _notion_credentials() -> tuple[str, str]:
     return token, db
 
 
-@app.get("/api/notion/pending", response_model=PendingPagesResponse)
+@app.get(
+    "/api/notion/pending",
+    response_model=PendingPagesResponse,
+    dependencies=[Depends(require_api_key)],
+)
 async def notion_pending():
     """
     발행상태가 "초안"인 Notion 페이지 목록 — 티스토리 발행 대기 큐.
@@ -502,7 +544,11 @@ async def notion_pending():
     return PendingPagesResponse(pages=result["pages"])
 
 
-@app.get("/api/notion/page/{page_id}", response_model=PageContentResponse)
+@app.get(
+    "/api/notion/page/{page_id}",
+    response_model=PageContentResponse,
+    dependencies=[Depends(require_api_key)],
+)
 async def notion_page_content(page_id: str):
     """
     페이지 본문을 마크다운으로 역변환해 반환 — 발행 전 미리보기용.
@@ -564,7 +610,11 @@ async def _publish_notion_page(page_id: str, tags: list[str] | None = None) -> d
     return {"url": result["url"], "title": title}
 
 
-@app.post("/api/publish/tistory", response_model=PublishResponse)
+@app.post(
+    "/api/publish/tistory",
+    response_model=PublishResponse,
+    dependencies=[Depends(require_api_key)],
+)
 async def publish_tistory(request: PublishRequest):
     """
     Notion 페이지 한 건을 티스토리에 발행합니다 (앱 발행 탭에서 호출).
@@ -613,7 +663,7 @@ async def _run_tistory_batch() -> dict:
     return await _publish_notion_page(target["page_id"])
 
 
-@app.post("/api/publish/tistory/batch")
+@app.post("/api/publish/tistory/batch", dependencies=[Depends(require_api_key)])
 async def publish_tistory_batch():
     """
     일일 배치를 수동으로 1회 실행 — 배치 동작 테스트용.
@@ -624,7 +674,7 @@ async def publish_tistory_batch():
     return result
 
 
-@app.post("/api/publish/tistory/keepalive")
+@app.post("/api/publish/tistory/keepalive", dependencies=[Depends(require_api_key)])
 async def tistory_keepalive():
     """
     세션 keep-alive를 수동으로 1회 실행 — 배포 직후 세션 상태 점검용.

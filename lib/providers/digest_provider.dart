@@ -279,6 +279,7 @@ class DigestNotifier extends Notifier<DigestState> {
         openaiApiKey: settings.apiKey,
         tavilyApiKey: settings.tavilyApiKey,
         youtubeApiKey: settings.youtubeApiKey,
+        serverApiKey: settings.serverApiKey,
       );
       final total = newDates.length;
 

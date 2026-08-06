@@ -56,12 +56,20 @@ class PublishApiService {
   /// 멀티에이전트 서버 기본 URL (예: "http://192.168.0.10:3936")
   final String serverUrl;
 
-  PublishApiService({required this.serverUrl});
+  /// 서버 접근 토큰 — /api/* 요청의 X-API-Key 헤더로 전송
+  /// (서버가 인터넷에 노출돼 있어 이 토큰이 없으면 401로 거부됨)
+  final String serverApiKey;
+
+  PublishApiService({required this.serverUrl, this.serverApiKey = ''});
 
   /// URL 끝의 슬래시 제거 (이중 슬래시 방지 — AgentApiService와 동일 패턴)
   String get _baseUrl => serverUrl.endsWith('/')
       ? serverUrl.substring(0, serverUrl.length - 1)
       : serverUrl;
+
+  /// /api/* 요청 공통 헤더 (서버 접근 토큰)
+  Map<String, String> get _apiHeaders =>
+      {if (serverApiKey.isNotEmpty) 'X-API-Key': serverApiKey};
 
   /// 에러 응답에서 detail 메시지를 추출합니다 (FastAPI 표준 형식)
   String _errorDetail(http.Response response) {
@@ -76,7 +84,7 @@ class PublishApiService {
   /// 발행 대기(발행상태="초안") 페이지 목록을 조회합니다.
   Future<List<PendingPage>> fetchPending() async {
     final response = await http
-        .get(Uri.parse('$_baseUrl/api/notion/pending'))
+        .get(Uri.parse('$_baseUrl/api/notion/pending'), headers: _apiHeaders)
         .timeout(const Duration(seconds: 30));
 
     if (response.statusCode != 200) {
@@ -94,7 +102,8 @@ class PublishApiService {
   /// 페이지 본문을 마크다운으로 조회합니다 (발행 전 미리보기용).
   Future<String> fetchPageMarkdown(String pageId) async {
     final response = await http
-        .get(Uri.parse('$_baseUrl/api/notion/page/$pageId'))
+        .get(Uri.parse('$_baseUrl/api/notion/page/$pageId'),
+            headers: _apiHeaders)
         .timeout(const Duration(seconds: 30));
 
     if (response.statusCode != 200) {
@@ -114,7 +123,7 @@ class PublishApiService {
     final response = await http
         .post(
           Uri.parse('$_baseUrl/api/publish/tistory'),
-          headers: {'Content-Type': 'application/json'},
+          headers: {'Content-Type': 'application/json', ..._apiHeaders},
           body: jsonEncode({'page_id': pageId}),
         )
         .timeout(const Duration(seconds: 180));
