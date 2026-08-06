@@ -104,10 +104,13 @@ async def lifespan(app: FastAPI):
     import asyncio
 
     batch_task = asyncio.create_task(_tistory_batch_loop())
+    # 티스토리 세션 keep-alive — 몇 시간마다 쿠키를 갱신해 세션 만료 방지
+    keepalive_task = asyncio.create_task(_tistory_keepalive_loop())
 
     yield
 
     batch_task.cancel()
+    keepalive_task.cancel()
     logger.info("서버 종료")
 
 
@@ -619,6 +622,52 @@ async def publish_tistory_batch():
     if "error" in result:
         raise HTTPException(status_code=502, detail=result["error"])
     return result
+
+
+@app.post("/api/publish/tistory/keepalive")
+async def tistory_keepalive():
+    """
+    세션 keep-alive를 수동으로 1회 실행 — 배포 직후 세션 상태 점검용.
+
+    세션이 살아있으면 쿠키만 갱신하고, 죽어있으면 자동 재로그인을 시도합니다.
+    """
+    result = await tistory_service.keepalive_session()
+    if "error" in result:
+        raise HTTPException(status_code=502, detail=result["error"])
+    return result
+
+
+async def _tistory_keepalive_loop():
+    """
+    몇 시간마다(기본 3시간, TISTORY_KEEPALIVE_HOURS로 변경) 세션 keep-alive를
+    실행하는 백그라운드 루프.
+
+    티스토리/카카오 세션은 안 쓰면 반나절~하루 만에 서버 쪽에서 만료되는 것으로
+    실측됐습니다. 하루 1회 발행 배치만으로는 만료를 못 막으므로, 더 짧은 주기로
+    세션을 "사용 중" 상태로 유지합니다. 죽어 있으면 자동 재로그인까지 시도합니다.
+    """
+    import asyncio
+
+    hours = float(os.getenv("TISTORY_KEEPALIVE_HOURS", "3"))
+    if hours <= 0:
+        logger.info("[keep-alive] 비활성화됨 (TISTORY_KEEPALIVE_HOURS=0)")
+        return
+
+    # 서버 기동 직후 안정화를 위해 1분 뒤 첫 실행
+    # (배포 직후 세션 상태를 바로 로그에서 확인할 수 있는 효과도 있음)
+    await asyncio.sleep(60)
+
+    while True:
+        try:
+            result = await tistory_service.keepalive_session()
+            if "error" in result:
+                logger.warning(f"[keep-alive] 실패: {result['error']}")
+            else:
+                logger.info(f"[keep-alive] {result['detail']}")
+        except Exception as e:
+            # keep-alive 1회 실패가 루프 자체를 죽이지 않도록 방어
+            logger.error(f"[keep-alive] 실행 중 예외: {e}", exc_info=True)
+        await asyncio.sleep(hours * 3600)
 
 
 async def _tistory_batch_loop():
