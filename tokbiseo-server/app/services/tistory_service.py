@@ -188,9 +188,12 @@ async def _try_auto_relogin(page, context, state_path: Path) -> str | None:
     시도 순서:
     1. 티스토리 로그인 페이지 → "카카오계정으로 로그인" 클릭
        (카카오 쿠키가 살아있으면 이것만으로 재로그인 완료 — 비밀번호 불필요)
-    2. 카카오 로그인 폼이 뜨면 .env의 KAKAO_EMAIL/KAKAO_PASSWORD로 자동 입력
-    3. 동의/계속 페이지가 끼어들면 "계속하기" 류 버튼을 눌러 진행
-    4. TSSESSION 쿠키가 생기면 세션 파일에 저장하고 성공
+    2. "로그인할 카카오계정 선택" 페이지(간편로그인 계정 목록)가 뜨면
+       저장된 계정 타일을 클릭 (세션이 죽어도 이 목록은 별도 쿠키로 남아있음)
+    3. 카카오 로그인 폼이 뜨면 .env의 KAKAO_EMAIL/KAKAO_PASSWORD로 자동 입력
+       (계정 선택을 거친 경우 비밀번호만 묻는 화면일 수도 있음 → 둘 다 처리)
+    4. 동의/계속 페이지가 끼어들면 "계속하기" 류 버튼을 눌러 진행
+    5. TSSESSION 쿠키가 생기면 세션 파일에 저장하고 성공
 
     캡차나 2단계 인증(카카오톡 확인)이 뜨면 자동화가 불가능하므로
     스크린샷을 남기고 실패를 반환합니다 → 이때만 수동 재로그인 필요.
@@ -242,8 +245,31 @@ async def _try_auto_relogin(page, context, state_path: Path) -> str | None:
                 )
 
             try:
-                # 폼이 아직 렌더링 중일 수 있으므로 입력창을 기다림
-                await page.wait_for_selector(SEL_KAKAO_ID_INPUT, timeout=10000)
+                # ── "로그인할 카카오계정 선택" 페이지 (간편로그인 계정 목록) ──
+                # 이전 로그인 때 "간편로그인 정보 저장"을 체크했으면 세션이 죽어도
+                # 이 목록이 남아, 아이디/비밀번호 폼 대신 계정 타일 화면이 뜸.
+                # (2026-08-08 배치 실패 원인 — 이 화면엔 loginId 입력창이 없어서
+                #  폼 대기가 타임아웃됐음)
+                picker = page.locator("text=로그인할 카카오계정 선택")
+                if await picker.count() > 0:
+                    # 저장된 계정 중 .env의 계정과 일치하는 타일을 클릭
+                    tile = page.locator(f"text={email}")
+                    if await tile.count() == 0:
+                        # 목록에 해당 계정이 없으면 새 계정 로그인으로 폼을 띄움
+                        tile = page.locator("text=새로운 계정으로 로그인")
+                    await tile.first.click(timeout=5000)
+                    logger.info("간편로그인 계정 선택 페이지 — 계정 타일 클릭")
+                    continue  # 다음 루프에서 이동한 화면(자동 로그인/비밀번호 폼)을 처리
+
+                # ── 아이디/비밀번호 폼 ──
+                # 계정 선택을 거쳐 왔으면 비밀번호만 묻는 화면일 수 있으므로,
+                # 고정 대기 대신 루프마다 어떤 입력창이 보이는지 확인해 분기
+                id_input = page.locator(SEL_KAKAO_ID_INPUT)
+                pw_input = page.locator(SEL_KAKAO_PW_INPUT)
+                has_id = await id_input.count() > 0 and await id_input.first.is_visible()
+                has_pw = await pw_input.count() > 0 and await pw_input.first.is_visible()
+                if not (has_id or has_pw):
+                    continue  # 아직 렌더링 중이거나 중간 페이지 — 1초 후 재확인
 
                 # 캡차가 이미 떠 있으면 자동화 불가 → 바로 포기
                 captcha_count = await page.locator(
@@ -253,7 +279,8 @@ async def _try_auto_relogin(page, context, state_path: Path) -> str | None:
                     shot = await _save_fail_screenshot(page, "tistory_relogin_captcha")
                     return f"카카오 로그인 캡차 감지 — 수동 로그인 필요 (스크린샷: {shot})"
 
-                await page.fill(SEL_KAKAO_ID_INPUT, email)
+                if has_id:
+                    await page.fill(SEL_KAKAO_ID_INPUT, email)
                 await page.fill(SEL_KAKAO_PW_INPUT, password)
 
                 # "로그인 상태 유지" 체크 (셀렉터가 자주 바뀌어 실패해도 계속)
@@ -286,12 +313,13 @@ async def _try_auto_relogin(page, context, state_path: Path) -> str | None:
                 except Exception:
                     continue
 
-    # 45초 안에 세션이 안 생김 → 캡차/2단계 인증에 막혔을 가능성이 높음
+    # 45초 안에 세션이 안 생김 → 캡차/2단계 인증/미지의 화면에 막혔을 가능성이 높음
     shot = await _save_fail_screenshot(page, "tistory_relogin_timeout")
     return (
         f"자동 재로그인 시간 초과 (현재 페이지: {page.url}) — "
-        f"캡차 또는 카카오톡 2단계 인증에 막혔을 수 있습니다. "
-        f"로컬에서 scripts/tistory_login.py로 수동 로그인해 주세요. (스크린샷: {shot})"
+        f"캡차, 카카오톡 2단계 인증, 또는 처리되지 않은 화면에 막혔을 수 있습니다. "
+        f"스크린샷으로 화면을 확인하고, 급하면 로컬에서 scripts/tistory_login.py로 "
+        f"수동 로그인해 주세요. (스크린샷: {shot})"
     )
 
 
