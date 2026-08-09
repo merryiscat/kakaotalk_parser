@@ -254,54 +254,91 @@ async def _try_auto_relogin(page, context, state_path: Path) -> str | None:
                 if await picker.count() > 0:
                     # 저장된 계정 중 .env의 계정과 일치하는 타일을 클릭
                     tile = page.locator(f"text={email}")
+                    if await tile.count() == 0 and "@" in email:
+                        # 카카오가 이메일을 마스킹해 표시하는 경우
+                        # (예: min****@gmail.com) 전체 일치가 안 되므로
+                        # 로컬파트 앞 3글자 부분 일치로 재시도
+                        prefix = email.split("@")[0][:3]
+                        tile = page.locator(f"text={prefix}")
                     if await tile.count() == 0:
                         # 목록에 해당 계정이 없으면 새 계정 로그인으로 폼을 띄움
-                        tile = page.locator("text=새로운 계정으로 로그인")
+                        # (버튼 문구가 개편될 수 있어 여러 후보를 순회)
+                        for fallback in (
+                            "새로운 계정으로 로그인",
+                            "다른 계정으로 로그인",
+                            "카카오계정 직접 입력",
+                        ):
+                            candidate = page.locator(f"text={fallback}")
+                            if await candidate.count() > 0:
+                                tile = candidate
+                                break
+                    if await tile.count() == 0:
+                        shot = await _save_fail_screenshot(
+                            page, "tistory_relogin_picker"
+                        )
+                        return (
+                            "간편로그인 계정 선택 화면에서 클릭할 항목을 찾지 못했습니다 "
+                            f"(스크린샷: {shot})"
+                        )
                     await tile.first.click(timeout=5000)
                     logger.info("간편로그인 계정 선택 페이지 — 계정 타일 클릭")
                     continue  # 다음 루프에서 이동한 화면(자동 로그인/비밀번호 폼)을 처리
 
                 # ── 아이디/비밀번호 폼 ──
-                # 계정 선택을 거쳐 왔으면 비밀번호만 묻는 화면일 수 있으므로,
-                # 고정 대기 대신 루프마다 어떤 입력창이 보이는지 확인해 분기
+                # 계정 선택을 거쳐 왔으면 비밀번호만 묻는 화면일 수 있고,
+                # 반대로 아이디를 먼저 받고 비밀번호는 다음 화면에서 받는
+                # 2단계 UI일 수도 있으므로, 고정 대기 대신 루프마다
+                # 어떤 입력창이 보이는지 확인해 분기
                 id_input = page.locator(SEL_KAKAO_ID_INPUT)
                 pw_input = page.locator(SEL_KAKAO_PW_INPUT)
                 has_id = await id_input.count() > 0 and await id_input.first.is_visible()
                 has_pw = await pw_input.count() > 0 and await pw_input.first.is_visible()
-                if not (has_id or has_pw):
-                    continue  # 아직 렌더링 중이거나 중간 페이지 — 1초 후 재확인
 
-                # 캡차가 이미 떠 있으면 자동화 불가 → 바로 포기
-                captcha_count = await page.locator(
-                    "img[src*='captcha'], [class*='captcha'], iframe[src*='recaptcha']"
-                ).count()
-                if captcha_count > 0:
-                    shot = await _save_fail_screenshot(page, "tistory_relogin_captcha")
-                    return f"카카오 로그인 캡차 감지 — 수동 로그인 필요 (스크린샷: {shot})"
+                if has_id or has_pw:
+                    # 캡차가 이미 떠 있으면 자동화 불가 → 바로 포기
+                    captcha_count = await page.locator(
+                        "img[src*='captcha'], [class*='captcha'], iframe[src*='recaptcha']"
+                    ).count()
+                    if captcha_count > 0:
+                        shot = await _save_fail_screenshot(
+                            page, "tistory_relogin_captcha"
+                        )
+                        return f"카카오 로그인 캡차 감지 — 수동 로그인 필요 (스크린샷: {shot})"
 
-                if has_id:
-                    await page.fill(SEL_KAKAO_ID_INPUT, email)
-                await page.fill(SEL_KAKAO_PW_INPUT, password)
+                    if has_id:
+                        await page.fill(SEL_KAKAO_ID_INPUT, email)
+                    if has_pw:
+                        await page.fill(SEL_KAKAO_PW_INPUT, password)
 
-                # "로그인 상태 유지" 체크 (셀렉터가 자주 바뀌어 실패해도 계속)
-                try:
-                    stay = page.locator("input[type='checkbox']").first
-                    if await stay.count() > 0 and not await stay.is_checked():
-                        # 체크박스가 숨겨져 있고 라벨 클릭만 되는 UI 대비
-                        await stay.check(timeout=3000, force=True)
-                except Exception:
-                    pass
+                    # "로그인 상태 유지" 체크 (셀렉터가 자주 바뀌어 실패해도 계속)
+                    try:
+                        stay = page.locator("input[type='checkbox']").first
+                        if await stay.count() > 0 and not await stay.is_checked():
+                            # 체크박스가 숨겨져 있고 라벨 클릭만 되는 UI 대비
+                            await stay.check(timeout=3000, force=True)
+                    except Exception:
+                        pass
 
-                await page.click(SEL_KAKAO_SUBMIT, timeout=5000)
-                form_submitted = True
-                logger.info("카카오 로그인 폼 제출 완료 — 결과 대기")
+                    await page.click(SEL_KAKAO_SUBMIT, timeout=5000)
+                    if has_pw:
+                        # 비밀번호까지 제출했을 때만 "폼 완료"로 간주
+                        form_submitted = True
+                        logger.info("카카오 로그인 폼 제출 완료 — 결과 대기")
+                    else:
+                        # 아이디만 받는 화면이었음 → 다음 루프에서 비밀번호 화면 처리
+                        logger.info("아이디 입력 후 제출 — 비밀번호 화면 대기")
+                    continue
+
+                # 입력창도 계정 목록도 없는 중간 화면(계속 진행 확인 등)일 수 있음
+                # → 아래의 "계속하기" 버튼 처리로 넘어가 진행을 시도
             except Exception as e:
                 shot = await _save_fail_screenshot(page, "tistory_relogin_fail")
                 return f"카카오 로그인 폼 입력 실패: {e} (스크린샷: {shot})"
-            continue
 
-        # 동의/계속 페이지 (kauth.kakao.com) — "계속하기" 류 버튼을 눌러 진행
-        if "kauth.kakao.com" in url or ("accounts.kakao.com" in url and form_submitted):
+        # 동의/계속 페이지 — "계속하기" 류 버튼을 눌러 진행
+        # (kauth.kakao.com 동의 화면 + accounts.kakao.com의 중간 확인 화면 모두 해당.
+        #  폼 제출 전이라도 입력창 없는 확인 화면이 끼어들 수 있어 조건을 넓게 잡음)
+        if "kauth.kakao.com" in url or "accounts.kakao.com" in url:
             for text in ("동의하고 계속하기", "계속하기", "확인"):
                 try:
                     btn = page.locator(
