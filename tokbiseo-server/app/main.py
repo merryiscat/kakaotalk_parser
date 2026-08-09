@@ -593,6 +593,16 @@ async def _publish_notion_page(page_id: str, tags: list[str] | None = None) -> d
     if not markdown:
         return {"error": "페이지 본문이 비어있습니다."}
 
+    # 2.5. 출처 표기 — 오픈채팅방 링크가 설정돼 있으면 글 끝에 덧붙임
+    # (링크는 .env의 TISTORY_SOURCE_URL로 관리 — 채팅방이 바뀌어도 코드 수정 불필요)
+    source_url = os.getenv("TISTORY_SOURCE_URL", "").strip()
+    if source_url:
+        markdown += (
+            "\n\n---\n\n"
+            "이 글은 카카오톡 오픈채팅방의 대화를 AI가 요약해 작성했습니다.\n\n"
+            f"대화 출처: [오픈채팅방 바로가기]({source_url})"
+        )
+
     # 3. Playwright 발행 (태그를 안 보냈으면 Notion 키워드 사용)
     title = info.get("title") or "톡비서 리포트"
     tags = tags or info.get("keywords", [])
