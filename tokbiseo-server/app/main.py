@@ -21,7 +21,6 @@ import secrets
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from sse_starlette.sse import EventSourceResponse
 
@@ -128,14 +127,9 @@ app = FastAPI(
     openapi_url=None,
 )
 
-# CORS 설정 — Flutter 앱에서 접근 가능하도록
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # 모든 출처 허용 (로컬 서버용)
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS 미들웨어 없음 (의도적) — 클라이언트가 Flutter 네이티브 앱뿐이라 브라우저
+# CORS가 적용될 일이 없고, 인터넷 노출 서버에서 allow_origins=["*"]는 공격면만 넓힌다.
+# 웹 클라이언트(Flutter web 등)를 추가하게 되면 그때 허용 출처를 명시해서 되살릴 것.
 
 
 # ── API 접근 인증 ──
