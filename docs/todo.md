@@ -38,7 +38,7 @@
     발행 위험 있으니 주의)
   - (사용자) 앱 설정 serverUrl 교체 → 라우터 포트포워딩 `talkbiseo` 삭제
 - **주의**: 앱 서버 URL은 이제 `https://tokbiseo.projectodin.net`만 유효 (구 주소는 내부망
-  `http://192.168.50.205:3936`으로만 접근 가능). 서버 API 키(X-API-Key) 체계는 그대로
+  미니PC 내부망 주소로만 접근 가능). 서버 API 키(X-API-Key) 체계는 그대로
 
 ### v2.0.18 서버 API 인증 (X-API-Key) — 인터넷 노출 대응 (2026-08-07)
 - **배경**: 공유기 포트포워딩(3936)으로 서버가 인터넷에 노출 → 무인증 상태였음
@@ -112,7 +112,7 @@
 - Notion DB에 `발행상태` select 속성(초안/발행완료) 추가
 - 진단 도구 추가: `scripts/test_session_local.py`(세션 유효성 검증),
   `scripts/dump_editor_selectors.py`(에디터 셀렉터 확인)
-- 운영 배포 절차 확인: 서버(192.168.50.205)에서 `git pull` 후 반드시
+- 운영 배포 절차 확인: 운영 서버(미니PC)에서 `git pull` 후 반드시
   `docker compose up -d --build` (git pull만으로는 미반영). `.env`·`data/`는 scp로 별도 업로드
 
 ### v2.0.11 티스토리 발행 기능 (2026-07-29)
