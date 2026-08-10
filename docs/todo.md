@@ -2,28 +2,6 @@
 
 ## 대기 중
 
-### Cloudflare Tunnel 전환 — 라우터 포트포워딩(3936) 닫기 (2026-08-10, 외부 인계)
-- **파일**: `docs/handoff-2026-08-10-tokbiseo-exposure.md` (project_odin 세션에서 인계)
-- **요지**: 미니PC에 이미 돌고 있는 cloudflared 터널에 호스트네임 추가 → 앱 serverUrl을
-  HTTPS 주소로 교체 → 라우터 포워딩 삭제. v2.0.18 API 키 인증이 있어 긴급 아님(심층 방어).
-- **선행 확인 3종 완료 (2026-08-10)**:
-  - 앱 https 처리: serverUrl은 문자열 설정 그대로 사용, 스킴 검증 코드 없음 → 코드 수정 불필요
-  - SSE 스트리밍: `/api/summarize-stream`이 30초 ping keep-alive → Cloudflare 100초
-    유휴 타임아웃에 안 걸림
-  - Notion 콜백: 서버 .env에 `NOTION_ACCESS_TOKEN` 고정 저장(OAuth는 과거 1회성) →
-    콜백 주소 변경 영향 없음
-- **환경 파악**: 터널은 토큰 기반 원격 관리형(설정이 서버 파일이 아니라 Cloudflare
-  대시보드에 있음), 도메인 `projectodin.net`, Cloudflare API 토큰은 로컬·서버 어디에도
-  없음 → 호스트네임 추가는 대시보드에서 사용자가 직접 해야 함
-- **진행 (2026-08-10~11)**: ① 호스트네임 추가 완료(사용자, 새 UI 기준 "Routes → Published
-  application": `tokbiseo.projectodin.net` → `http://localhost:3936`) ② 터널 경유 검증 완료
-  (Claude 실측): /health 200, 무키 401, **SSE가 이벤트 단위로 실시간 통과**(잡담 대화로
-  테스트 — 필터에서 걸러져 Notion 저장 없음. 정상 대화로 테스트하면 초안이 생겨 티스토리
-  자동 배치를 탈 수 있으니 주의)
-- **남은 단계**: ③ (사용자) 앱 설정 serverUrl을 `https://tokbiseo.projectodin.net`으로 교체
-  (서버 접근 토큰은 그대로) ④ (사용자) 라우터 포트포워딩 `talkbiseo`(외부 3936) 삭제
-  ⑤ (Claude) 외부에서 3936 포트 닫힘 확인 (외부 IP 211.250.197.110, check-host.net 등 활용)
-
 ### 화면 UI 업데이트 (디자인 리뉴얼)
 - **파일**: `lib/screens/` 전체, `lib/app.dart`(테마)
 - **현황**: Claude Design 입력 프롬프트 작성 완료 → `docs/design_renewal_prompt_v1.md`
@@ -42,6 +20,25 @@
   (`notion_service.py`의 `_schema_cache`) → DB 속성 변경 시 서버 재시작 필요
 
 ## 완료
+
+### Cloudflare Tunnel 전환 — 라우터 포트포워딩(3936) 폐쇄 (2026-08-10~11)
+- **배경**: `docs/handoff-2026-08-10-tokbiseo-exposure.md` (project_odin 세션 인계) —
+  서버가 라우터 포트포워딩으로 인터넷 직접 노출 → Cloudflare WAF 뒤로 이동(심층 방어)
+- **결과**: 외부 접근은 **`https://tokbiseo.projectodin.net`** 단일 경로. 미니PC 인바운드
+  열린 포트는 SSH(22)만 남음. 외부 3노드(check-host.net)에서 3936 접속 시도 전부
+  timeout으로 폐쇄 실측 확인, 터널 경유 /health 200 정상
+- **수행 내역**:
+  - 선행 확인 3종: 앱 https 처리(코드 수정 불필요 — serverUrl은 설정값 그대로 사용),
+    SSE 30초 ping < Cloudflare 100초 유휴 타임아웃, Notion은 고정 토큰이라 콜백 주소 무관
+  - (사용자) Cloudflare 대시보드에서 라우트 추가: `tokbiseo.projectodin.net` →
+    `http://localhost:3936` — 터널은 토큰 기반 원격 관리형이라 대시보드에서만 설정 가능
+    (새 UI: Networks→Tunnels→odin→Routes→Published application, Path는 비움)
+  - (Claude) 터널 경유 실측: /health 200, 무키 401, **SSE 이벤트 단위 실시간 통과** 확인
+    (잡담 대화로 테스트 — 정상 대화로 테스트하면 Notion 초안 생성 → 티스토리 자동 배치
+    발행 위험 있으니 주의)
+  - (사용자) 앱 설정 serverUrl 교체 → 라우터 포트포워딩 `talkbiseo` 삭제
+- **주의**: 앱 서버 URL은 이제 `https://tokbiseo.projectodin.net`만 유효 (구 주소는 내부망
+  `http://192.168.50.205:3936`으로만 접근 가능). 서버 API 키(X-API-Key) 체계는 그대로
 
 ### v2.0.18 서버 API 인증 (X-API-Key) — 인터넷 노출 대응 (2026-08-07)
 - **배경**: 공유기 포트포워딩(3936)으로 서버가 인터넷에 노출 → 무인증 상태였음
