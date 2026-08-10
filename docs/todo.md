@@ -15,10 +15,14 @@
 - **환경 파악**: 터널은 토큰 기반 원격 관리형(설정이 서버 파일이 아니라 Cloudflare
   대시보드에 있음), 도메인 `projectodin.net`, Cloudflare API 토큰은 로컬·서버 어디에도
   없음 → 호스트네임 추가는 대시보드에서 사용자가 직접 해야 함
-- **남은 단계**: ① (사용자) Cloudflare Zero Trust → 터널에 Public Hostname 추가:
-  `tokbiseo.projectodin.net` → `http://localhost:3936` ② (Claude) https로 /health·요약
-  스트리밍 검증 ③ (사용자) 앱 설정 serverUrl을 `https://tokbiseo.projectodin.net`으로 교체
-  ④ (사용자) 라우터 포트포워딩 `talkbiseo`(외부 3936) 삭제 ⑤ (Claude) 외부 포트 닫힘 확인
+- **진행 (2026-08-10~11)**: ① 호스트네임 추가 완료(사용자, 새 UI 기준 "Routes → Published
+  application": `tokbiseo.projectodin.net` → `http://localhost:3936`) ② 터널 경유 검증 완료
+  (Claude 실측): /health 200, 무키 401, **SSE가 이벤트 단위로 실시간 통과**(잡담 대화로
+  테스트 — 필터에서 걸러져 Notion 저장 없음. 정상 대화로 테스트하면 초안이 생겨 티스토리
+  자동 배치를 탈 수 있으니 주의)
+- **남은 단계**: ③ (사용자) 앱 설정 serverUrl을 `https://tokbiseo.projectodin.net`으로 교체
+  (서버 접근 토큰은 그대로) ④ (사용자) 라우터 포트포워딩 `talkbiseo`(외부 3936) 삭제
+  ⑤ (Claude) 외부에서 3936 포트 닫힘 확인 (외부 IP 211.250.197.110, check-host.net 등 활용)
 
 ### 화면 UI 업데이트 (디자인 리뉴얼)
 - **파일**: `lib/screens/` 전체, `lib/app.dart`(테마)
