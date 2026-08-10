@@ -2,11 +2,23 @@
 
 ## 대기 중
 
-### Cloudflare Tunnel 전환 검토 — 라우터 포트포워딩(3936) 닫기 (2026-08-10, 외부 인계)
+### Cloudflare Tunnel 전환 — 라우터 포트포워딩(3936) 닫기 (2026-08-10, 외부 인계)
 - **파일**: `docs/handoff-2026-08-10-tokbiseo-exposure.md` (project_odin 세션에서 인계)
 - **요지**: 미니PC에 이미 돌고 있는 cloudflared 터널에 호스트네임 추가 → 앱 serverUrl을
   HTTPS 주소로 교체 → 라우터 포워딩 삭제. v2.0.18 API 키 인증이 있어 긴급 아님(심층 방어).
-  선행 확인 사항·미니PC 실측 정보는 인계 문서 참조.
+- **선행 확인 3종 완료 (2026-08-10)**:
+  - 앱 https 처리: serverUrl은 문자열 설정 그대로 사용, 스킴 검증 코드 없음 → 코드 수정 불필요
+  - SSE 스트리밍: `/api/summarize-stream`이 30초 ping keep-alive → Cloudflare 100초
+    유휴 타임아웃에 안 걸림
+  - Notion 콜백: 서버 .env에 `NOTION_ACCESS_TOKEN` 고정 저장(OAuth는 과거 1회성) →
+    콜백 주소 변경 영향 없음
+- **환경 파악**: 터널은 토큰 기반 원격 관리형(설정이 서버 파일이 아니라 Cloudflare
+  대시보드에 있음), 도메인 `projectodin.net`, Cloudflare API 토큰은 로컬·서버 어디에도
+  없음 → 호스트네임 추가는 대시보드에서 사용자가 직접 해야 함
+- **남은 단계**: ① (사용자) Cloudflare Zero Trust → 터널에 Public Hostname 추가:
+  `tokbiseo.projectodin.net` → `http://localhost:3936` ② (Claude) https로 /health·요약
+  스트리밍 검증 ③ (사용자) 앱 설정 serverUrl을 `https://tokbiseo.projectodin.net`으로 교체
+  ④ (사용자) 라우터 포트포워딩 `talkbiseo`(외부 3936) 삭제 ⑤ (Claude) 외부 포트 닫힘 확인
 
 ### 화면 UI 업데이트 (디자인 리뉴얼)
 - **파일**: `lib/screens/` 전체, `lib/app.dart`(테마)
