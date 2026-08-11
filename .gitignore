@@ -71,3 +71,8 @@ Desktop.ini
 # 인프라 상세(IP·SSH·라우터 설정)가 담기는 인수인계 문서 — 공개 저장소에 올리지 않는다
 docs/handoff-*.md
 .playwright-mcp/
+
+#docs
+todo.*
+
+
