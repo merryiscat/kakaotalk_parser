@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/publish_provider.dart';
 import '../services/publish_api_service.dart';
+import '../theme.dart';
 
 /// 티스토리 발행 화면 (하단 네비게이션 "발행" 탭)
 ///
@@ -51,7 +52,19 @@ class _PublishScreenState extends ConsumerState<PublishScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('티스토리 발행'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('발행'),
+            Text(
+              '매일 09:00 자동 발행 · 수동은 보조',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
         actions: [
           // 수동 새로고침 (발행 대기 목록 다시 조회)
           IconButton(
@@ -65,31 +78,87 @@ class _PublishScreenState extends ConsumerState<PublishScreen> {
       ),
       body: Column(
         children: [
-          // 에러 배너 (조회/발행 실패 시)
+          // 에러 배너 (조회/발행 실패 시) — errorContainer 라운드 배너
           if (publishState.error != null)
-            MaterialBanner(
-              content: Text(publishState.error!),
-              backgroundColor: Theme.of(context).colorScheme.errorContainer,
-              actions: [
-                TextButton(
-                  onPressed: () =>
-                      ref.read(publishProvider.notifier).clearError(),
-                  child: const Text('닫기'),
-                ),
-              ],
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.error_outline,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.onErrorContainer),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      publishState.error!,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onErrorContainer,
+                          ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        ref.read(publishProvider.notifier).clearError(),
+                    style: TextButton.styleFrom(
+                      foregroundColor:
+                          Theme.of(context).colorScheme.onErrorContainer,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: const Text('닫기'),
+                  ),
+                ],
+              ),
             ),
 
           // 발행 진행 중 안내 (Playwright 발행은 수십 초 걸림)
+          // primaryContainer 블록 + 얇은 진행바 — 시안의 "발행 중" 배너
           if (publishState.publishingPageId != null)
-            const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                LinearProgressIndicator(),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Text('티스토리에 발행 중... (최대 3분 소요)'),
-                ),
-              ],
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.cloud_upload_outlined,
+                          size: 20,
+                          color:
+                              Theme.of(context).colorScheme.onPrimaryContainer),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '발행 중… 최대 3분 걸려요',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onPrimaryContainer,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: const LinearProgressIndicator(),
+                  ),
+                ],
+              ),
             ),
 
           Expanded(child: _buildBody(publishState)),
@@ -110,17 +179,25 @@ class _PublishScreenState extends ConsumerState<PublishScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.check_circle_outline,
-              size: 64,
-              color: Theme.of(context).colorScheme.outline,
+              Icons.drafts_outlined,
+              size: 44,
+              color: Theme.of(context).colorScheme.primaryContainer,
             ),
-            const SizedBox(height: 16),
-            const Text('발행 대기 중인 리포트가 없습니다'),
+            const SizedBox(height: 12),
+            Text(
+              '발행 대기 중인 리포트가 없어요',
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(fontSize: 19),
+            ),
             const SizedBox(height: 8),
             Text(
-              '요약을 실행하면 Notion에 "초안" 상태로 쌓이고\n여기서 티스토리로 발행할 수 있어요',
+              '요약을 실행하면 "초안"으로 쌓이고,\n매일 09:00에 한 건씩 자동으로 발행됩니다',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
           ],
         ),
@@ -257,76 +334,86 @@ class _PendingPageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    // 발행 대기 카드 — 탭 가능한 목록이므로 1px 보더(컨테이너 규칙 ③)
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 제목
-            Text(
-              page.title.isEmpty ? '(제목 없음)' : page.title,
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 4),
-
-            // 날짜 (제목에 이미 포함돼 있을 수 있지만 방이름만 있는 경우 대비)
-            if (page.chatDate.isNotEmpty)
-              Text(
-                page.chatDate,
-                style: Theme.of(context).textTheme.bodySmall,
+      padding: const EdgeInsets.all(14),
+      decoration: outlinedBox(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 상태 배지("초안") + 날짜·키워드 메타 한 줄
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '초안',
+                  style: text.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ),
-
-            // 키워드 칩 (발행 시 티스토리 태그로 들어감)
-            if (page.keywords.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: page.keywords
-                    .map((kw) => Chip(
-                          label: Text(kw),
-                          labelStyle: Theme.of(context).textTheme.labelSmall,
-                          padding: EdgeInsets.zero,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                        ))
-                    .toList(),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  [
+                    if (page.chatDate.isNotEmpty) page.chatDate,
+                    if (page.keywords.isNotEmpty)
+                      page.keywords.take(3).join(' · '),
+                  ].join(' · '),
+                  style: text.labelSmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
 
-            const SizedBox(height: 8),
+          // 제목 — 주아체 17
+          Text(
+            page.title.isEmpty ? '(제목 없음)' : page.title,
+            style: const TextStyle(
+                fontFamily: 'BMJUA', fontSize: 17, height: 1.35),
+          ),
+          const SizedBox(height: 12),
 
-            // 하단 버튼 줄: 미리보기 / 발행
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton.icon(
-                  onPressed: onPreview,
-                  icon: const Icon(Icons.visibility_outlined, size: 18),
-                  label: const Text('미리보기'),
-                ),
-                const SizedBox(width: 8),
-                // 발행 중이면 스피너, 아니면 발행 버튼
-                isPublishing
-                    ? const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
+          // 하단 버튼 줄: 발행(주 버튼, 넓게) / 미리보기(보조)
+          Row(
+            children: [
+              Expanded(
+                child: isPublishing
+                    ? const Center(
                         child: SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       )
-                    : FilledButton.icon(
+                    : FilledButton(
                         onPressed: publishDisabled ? null : onPublish,
-                        icon: const Icon(Icons.publish, size: 18),
-                        label: const Text('발행'),
+                        child: const Text('발행'),
                       ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: onPreview,
+                child: const Text('미리보기'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

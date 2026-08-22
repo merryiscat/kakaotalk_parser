@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/digest_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/agent_api_service.dart';
+import '../theme.dart';
 
 /// 설정 화면 — 서버 URL + API 키 관리
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -226,28 +227,48 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('설정')),
+      // 구분선 대신 "섹션 라벨 + 보더 그룹" 구조 (컨테이너 규칙 ③)
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // ── 서버 연결 ──
           _buildServerSection(context, settings),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 22),
           // ── API 키 관리 ──
           _buildApiKeysSection(context, settings),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 22),
           // ── API 사용량 ──
           _buildUsageCard(context),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 22),
           // ── 앱 정보 ──
           _buildAppInfo(context),
         ],
       ),
+    );
+  }
+
+  /// 섹션 라벨 — 작은 대문자 스타일의 그룹 제목 (시안의 "연결 상태" 라벨)
+  Widget _sectionLabel(BuildContext context, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 2, bottom: 8),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+      ),
+    );
+  }
+
+  /// 섹션 내용을 감싸는 1px 보더 그룹 컨테이너
+  Widget _sectionGroup(BuildContext context, {required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: outlinedBox(context),
+      child: child,
     );
   }
 
@@ -264,18 +285,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(
-              Icons.dns_outlined,
-              size: 20,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: 8),
-            Text('서버 연결', style: Theme.of(context).textTheme.titleSmall),
-          ],
-        ),
-        const SizedBox(height: 4),
+        _sectionLabel(context, '서버 연결'),
+        _sectionGroup(
+          context,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
         Text(
           '멀티에이전트 서버에 연결하여 웹/유튜브 검색이 포함된 리포트를 생성합니다.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -362,51 +377,80 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
         ),
-        const SizedBox(height: 8),
-        // 서버 연결 상태 표시
+        const SizedBox(height: 12),
+        // 서버 연결 상태 표시 — 배경색 블록(규칙 ②) + 상태 배지
         if (settings.serverUrl.isNotEmpty)
-          Card(
-            color: Colors.green.withValues(alpha: 0.1),
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.green, size: 16),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '서버 연결됨 (${settings.serverUrl})',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.green,
-                          ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          _buildStatusRow(
+            context,
+            icon: Icons.check_circle_outline,
+            badge: '정상',
+            badgeColor: Theme.of(context).colorScheme.primaryContainer,
+            badgeTextColor: Theme.of(context).colorScheme.onPrimaryContainer,
+            message: settings.serverUrl,
           )
         else
-          Card(
-            color: Colors.orange.withValues(alpha: 0.1),
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber, color: Colors.orange, size: 16),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '서버 URL을 설정해야 요약 기능을 사용할 수 있습니다',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.orange,
-                          ),
-                    ),
+          _buildStatusRow(
+            context,
+            icon: Icons.link_off,
+            badge: '미설정',
+            badgeColor: Theme.of(context).colorScheme.tertiaryContainer,
+            badgeTextColor: Theme.of(context).colorScheme.onTertiaryContainer,
+            message: '서버 URL을 설정해야 요약 기능을 사용할 수 있습니다',
+          ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 연결 상태 한 줄 표시 — 아이콘 + 메시지 + 우측 상태 배지
+  Widget _buildStatusRow(
+    BuildContext context, {
+    required IconData icon,
+    required String badge,
+    required Color badgeColor,
+    required Color badgeTextColor,
+    required String message,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: scheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
-                ],
-              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-      ],
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: badgeColor,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              badge,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: badgeTextColor,
+                  ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -434,18 +478,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(
-              Icons.key_outlined,
-              size: 20,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: 8),
-            Text('API 키', style: Theme.of(context).textTheme.titleSmall),
-          ],
-        ),
-        const SizedBox(height: 12),
+        _sectionLabel(context, 'API 키'),
+        _sectionGroup(
+          context,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
         // ── OpenAI API 키 ──
         TextField(
           controller: _apiKeyController,
@@ -551,6 +589,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
         ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -583,24 +624,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final outputCost = outputTokens / 1000000 * outputPrice;
     final totalCost = inputCost + outputCost;
 
-    return Card(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.paid_outlined,
-                    size: 18,
-                    color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 8),
-                Text('API 사용량',
-                    style: Theme.of(context).textTheme.labelLarge),
-              ],
-            ),
-            const SizedBox(height: 8),
+    // 정보 표시 전용이므로 배경색 블록(컨테이너 규칙 ②) — 보더·그림자 없음
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel(context, 'API 사용량'),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainer,
+            borderRadius: BorderRadius.circular(kRadiusContainer),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Text(
               '모델: $model',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -642,9 +680,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     fontSize: 11,
                   ),
             ),
-          ],
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -653,34 +692,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('앱 정보', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 12),
-        ListTile(
-          leading: const Icon(Icons.info_outline),
-          title: const Text('톡비서'),
-          subtitle: Text(
-            'v2.0.1',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          contentPadding: EdgeInsets.zero,
-        ),
-        ListTile(
-          leading: const Icon(Icons.description_outlined),
-          title: const Text('라이센스'),
-          subtitle: Text(
-            'MIT License © 2026 merryiscat',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          contentPadding: EdgeInsets.zero,
-          onTap: () => showLicensePage(
-            context: context,
-            applicationName: '톡비서',
-            applicationVersion: 'v2.0.1',
-            applicationLegalese: '© 2026 merryiscat\nMIT License',
+        _sectionLabel(context, '앱 정보'),
+        _sectionGroup(
+          context,
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('톡비서'),
+                subtitle: Text(
+                  'v2.1.0',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                contentPadding: EdgeInsets.zero,
+              ),
+              ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: const Text('라이센스'),
+                subtitle: Text(
+                  'MIT License © 2026 merryiscat',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                contentPadding: EdgeInsets.zero,
+                onTap: () => showLicensePage(
+                  context: context,
+                  applicationName: '톡비서',
+                  applicationVersion: 'v2.1.0',
+                  applicationLegalese: '© 2026 merryiscat\nMIT License',
+                ),
+              ),
+            ],
           ),
         ),
       ],

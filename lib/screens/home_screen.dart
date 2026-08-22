@@ -23,7 +23,15 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('톡비서'),
+        // 브랜드 마크(초록 링 + 허니 점) + 주아체 로고타입
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TokbiseoMark(size: 26),
+            SizedBox(width: 10),
+            Text('톡비서'),
+          ],
+        ),
       ),
       body: _buildBody(context, ref, digestState, roomNames),
       // 단톡방 추가 FAB (방이 1개 이상일 때만 표시)
@@ -62,22 +70,22 @@ class HomeScreen extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.chat_bubble_outline,
-            size: 80,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            '단톡방을 추가해보세요',
-            style: TextStyle(fontSize: 16),
+          // 빈 상태 일러스트 — 브랜드 마크를 크게
+          const TokbiseoMark(size: 80),
+          const SizedBox(height: 20),
+          Text(
+            '아직 등록한 단톡방이 없어요',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontSize: 21,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
-            '방을 만든 뒤 카카오톡 대화 파일을 불러올 수 있어요',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+            '대화 내보내기 파일 하나만 올리면\n오늘 무슨 이야기가 나왔는지 정리해 드려요',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
           // 에러 메시지가 있으면 표시
           if (error != null) ...[
@@ -166,7 +174,7 @@ class HomeScreen extends ConsumerWidget {
                       padding: const EdgeInsets.all(16),
                       child: Row(
                         children: [
-                          // 채팅방 아이콘
+                          // 채팅방 아이콘 (48px · radius 16 · primaryContainer)
                           Container(
                             width: 48,
                             height: 48,
@@ -174,16 +182,16 @@ class HomeScreen extends ConsumerWidget {
                               color: Theme.of(context)
                                   .colorScheme
                                   .primaryContainer,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                             child: Icon(
-                              Icons.chat,
+                              Icons.forum_outlined,
                               color: Theme.of(context)
                                   .colorScheme
                                   .onPrimaryContainer,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 14),
                           // 채팅방 이름 + 요약 날짜 수 + 메시지 수
                           Expanded(
                             child: Column(

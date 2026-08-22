@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0&family=Jua&display=swap">
+<style>
+/* BMJUA(배민 주아체) = Google Fonts 'Jua' */
+body{margin:0;background:#E9EDE9;-webkit-font-smoothing:antialiased;}
+a{color:#1F5C50;text-decoration:none;border-bottom:1px solid #B8E7DA;}
+a:hover{color:#0B3B32;border-bottom-color:#1F5C50;}
+.ms{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased;}
+</style>
+</helmet>
+
+<section style="padding:64px 72px 120px;font-family:'Pretendard',sans-serif;color:#191C1B;">
+<div id="1a" style="display:flex;flex-direction:column;gap:56px;">
+
+  <div style="display:flex;align-items:flex-start;gap:20px;">
+    <div style="width:44px;height:44px;border-radius:50%;border:5px solid #1F5C50;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex:none;">
+      <div style="width:11px;height:11px;border-radius:50%;background:#E0A722;"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-family:'Jua','BMJUA',sans-serif;font-size:40px;line-height:1.1;">톡비서 디자인 시스템 리뉴얼</span>
+        <span style="font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;background:#1F5C50;color:#fff;">1a</span>
+      </div>
+      <div style="font-size:16px;line-height:1.7;color:#414944;max-width:820px;">딥 잉크 그린 시드 + 허니 액센트 / BMJUA(디스플레이) + Pretendard(본문) 분리 / Material 3 <code style="font-family:ui-monospace,monospace;font-size:14px;background:#EBF1EC;padding:1px 6px;border-radius:5px;">ColorScheme.fromSeed</code> 1시드 + 소수 오버라이드. 아래는 토큰 → 컨테이너 규칙 → 정보 위계 → 화면 시안(라이트·다크) → 컴포넌트 스펙 순서입니다.</div>
+    </div>
+  </div>
+
+  <sc-if value="{{ showTokens }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;">
+
+    <div style="width:520px;background:#F6FBF7;border:1px solid #C0C9C2;border-radius:20px;padding:28px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px;">
+      <div style="font-family:'Jua','BMJUA',sans-serif;font-size:22px;">1. 컬러 — 시드 1개 + 오버라이드 3개</div>
+      <div style="font-family:ui-monospace,monospace;font-size:13px;line-height:1.9;background:#EBF1EC;border-radius:12px;padding:16px;color:#28312C;white-space:pre-wrap;">seed: #14524A  (딥 잉크 그린)
+override light: tertiary #7A5300
+  tertiaryContainer #FFE08A
+override dark: tertiary #F5C453
+  tertiaryContainer #5A4300</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:13px;font-weight:700;color:#414944;letter-spacing:.02em;">LIGHT</div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;">
+          <div style="height:56px;border-radius:10px;background:#1F5C50;color:#fff;font-size:10px;padding:6px;box-sizing:border-box;">primary</div>
+          <div style="height:56px;border-radius:10px;background:#B8E7DA;color:#05201A;font-size:10px;padding:6px;box-sizing:border-box;">p.Cont</div>
+          <div style="height:56px;border-radius:10px;background:#FFE08A;color:#2A1C00;font-size:10px;padding:6px;box-sizing:border-box;">t.Cont</div>
+          <div style="height:56px;border-radius:10px;background:#F6FBF7;border:1px solid #C0C9C2;color:#191C1B;font-size:10px;padding:6px;box-sizing:border-box;">surface</div>
+          <div style="height:56px;border-radius:10px;background:#EBF1EC;color:#191C1B;font-size:10px;padding:6px;box-sizing:border-box;">s.Cont</div>
+          <div style="height:56px;border-radius:10px;background:#FFDAD6;color:#410002;font-size:10px;padding:6px;box-sizing:border-box;">errCont</div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:#414944;letter-spacing:.02em;">DARK</div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;">
+          <div style="height:56px;border-radius:10px;background:#9CD1C1;color:#00382F;font-size:10px;padding:6px;box-sizing:border-box;">primary</div>
+          <div style="height:56px;border-radius:10px;background:#005143;color:#B8E7DA;font-size:10px;padding:6px;box-sizing:border-box;">p.Cont</div>
+          <div style="height:56px;border-radius:10px;background:#5A4300;color:#FFE08A;font-size:10px;padding:6px;box-sizing:border-box;">t.Cont</div>
+          <div style="height:56px;border-radius:10px;background:#0F1513;color:#E1E3E0;font-size:10px;padding:6px;box-sizing:border-box;">surface</div>
+          <div style="height:56px;border-radius:10px;background:#1B211F;color:#E1E3E0;font-size:10px;padding:6px;box-sizing:border-box;">s.Cont</div>
+          <div style="height:56px;border-radius:10px;background:#93000A;color:#FFDAD6;font-size:10px;padding:6px;box-sizing:border-box;">errCont</div>
+        </div>
+      </div>
+      <div style="font-size:14px;line-height:1.7;color:#414944;">허니(tertiary)는 <strong>강조 전용</strong>: 키워드 칩, 제안 카드 좌측 마커, 진행 중 상태. 면적 5% 이하로 제한 — 카카오 옐로우 연상은 남고 브랜드 모방은 피합니다.</div>
+    </div>
+
+    <div style="width:480px;background:#F6FBF7;border:1px solid #C0C9C2;border-radius:20px;padding:28px;box-sizing:border-box;display:flex;flex-direction:column;gap:18px;">
+      <div style="font-family:'Jua','BMJUA',sans-serif;font-size:22px;">2. 타이포 — 디스플레이/본문 분리</div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #DDE5DF;padding-bottom:12px;">
+          <span style="font-family:'Jua','BMJUA',sans-serif;font-size:28px;">오늘의 리포트</span>
+          <span style="font-family:ui-monospace,monospace;font-size:11px;color:#717972;">BMJUA · displaySmall 28/1.3</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #DDE5DF;padding-bottom:12px;">
+          <span style="font-family:'Jua','BMJUA',sans-serif;font-size:22px;">톡비서 제안</span>
+          <span style="font-family:ui-monospace,monospace;font-size:11px;color:#717972;">BMJUA · titleLarge 22/1.35</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #DDE5DF;padding-bottom:12px;">
+          <span style="font-weight:700;font-size:16px;">Riverpod 상태관리 정리</span>
+          <span style="font-family:ui-monospace,monospace;font-size:11px;color:#717972;">Pretendard 700 · titleMedium 16</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;border-bottom:1px solid #DDE5DF;padding-bottom:12px;">
+          <span style="font-size:16px;line-height:1.75;">본문은 Pretendard 400 / 16px / line-height 1.75. 긴 기술 리포트를 읽는 유일한 텍스트 스타일입니다.</span>
+          <span style="font-family:ui-monospace,monospace;font-size:11px;color:#717972;">Pretendard 400 · bodyLarge 16/1.75</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:14px;">
+          <span style="font-size:12px;color:#414944;">342개 메시지 · 8월 15일</span>
+          <span style="font-family:ui-monospace,monospace;font-size:11px;color:#717972;">Pretendard 500 · labelMedium 12</span>
+        </div>
+      </div>
+      <div style="font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.85;background:#EBF1EC;border-radius:12px;padding:14px;color:#28312C;white-space:pre-wrap;">textTheme: 
+  display*/headline*/title* → BMJUA(=Jua)
+  body*/label*   → 'Pretendard'
+  inline code    → 'D2Coding'
+규칙: BMJUA는 2줄 이하 + 24px 이상에만.</div>
+      <div style="font-family:'Jua','BMJUA',sans-serif;font-size:22px;margin-top:4px;">3. 스페이싱 · 라운딩</div>
+      <div style="font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.85;color:#414944;white-space:pre-wrap;">space: 4 · 8 · 12 · 16 · 24 · 32 · 48
+화면 좌우 패딩: 모바일 16, 데스크톱 24
+radius: chip 999 / 컨테이너 16 / 카드 20 / 시트 28
+반응형: &lt;600 단일 컬럼+NavigationBar
+  600–1000 NavigationRail + 1컬럼
+  &gt;1000 NavigationRail + 목록·상세 2패널(리스트 360)</div>
+    </div>
+
+    <div style="width:520px;background:#0F1513;border-radius:20px;padding:28px;box-sizing:border-box;display:flex;flex-direction:column;gap:18px;color:#E1E3E0;">
+      <div style="font-family:'Jua','BMJUA',sans-serif;font-size:22px;color:#9CD1C1;">4. 컨테이너를 언제 쓰는가</div>
+      <div style="font-size:14px;line-height:1.7;color:#BFC9C2;">위에서 아래로 갈수록 강한 도구입니다. <strong style="color:#FFE08A;">한 화면에 3단계까지만</strong>, 같은 종류의 컨테이너는 중첩 금지(Card 안 Card 금지).</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:14px;background:#171D1B;">
+          <span style="font-family:'Jua','BMJUA',sans-serif;font-size:18px;color:#9CD1C1;width:24px;flex:none;">①</span>
+          <div><div style="font-weight:700;font-size:15px;">여백만</div><div style="font-size:13.5px;line-height:1.65;color:#BFC9C2;">기본값. 같은 섹션 안의 문단·불릿·소제목. 리포트 본문 90%는 여기서 끝납니다.</div></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:14px;background:#171D1B;">
+          <span style="font-family:'Jua','BMJUA',sans-serif;font-size:18px;color:#9CD1C1;width:24px;flex:none;">②</span>
+          <div><div style="font-weight:700;font-size:15px;">배경색 구분 (surfaceContainer)</div><div style="font-size:13.5px;line-height:1.65;color:#BFC9C2;">섹션 경계 + 인용문/학습 목표 블록. 테두리 없음, 그림자 없음.</div></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:14px;background:#171D1B;">
+          <span style="font-family:'Jua','BMJUA',sans-serif;font-size:18px;color:#9CD1C1;width:24px;flex:none;">③</span>
+          <div><div style="font-weight:700;font-size:15px;">1px outlineVariant 보더</div><div style="font-size:13.5px;line-height:1.65;color:#BFC9C2;">탭 가능한 것 = 보더. 접힘형 주제 카드, 설정 그룹, 발행 대기 카드.</div></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:14px;background:#262B29;border-left:3px solid #F5C453;">
+          <span style="font-family:'Jua','BMJUA',sans-serif;font-size:18px;color:#F5C453;width:24px;flex:none;">④</span>
+          <div><div style="font-weight:700;font-size:15px;">Card elevation 1 — 예외 2곳뿐</div><div style="font-size:13.5px;line-height:1.65;color:#BFC9C2;">홈의 방 카드, 요약 상세의 제안 카드. 그 외 elevation 사용 금지.</div></div>
+        </div>
+      </div>
+      <div style="font-family:'Jua','BMJUA',sans-serif;font-size:22px;color:#9CD1C1;margin-top:6px;">5. 요약 상세 정보 위계</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;gap:12px;align-items:center;font-size:14px;"><span style="width:22px;height:22px;border-radius:50%;background:#F5C453;color:#3F2E00;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;">1</span><strong>톡비서 제안</strong><span style="color:#BFC9C2;">— 유일한 행동 유발 섹션. 상단 하이라이트 + Card ④</span></div>
+        <div style="display:flex;gap:12px;align-items:center;font-size:14px;"><span style="width:22px;height:22px;border-radius:50%;background:#005143;color:#B8E7DA;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;">2</span><strong>핵심 정보</strong><span style="color:#BFC9C2;">— 깊게 파는 사람만. 접힘 ③ + 미리보기 1줄</span></div>
+        <div style="display:flex;gap:12px;align-items:center;font-size:14px;"><span style="width:22px;height:22px;border-radius:50%;background:#005143;color:#B8E7DA;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;">3</span><strong>대화 주요 내용</strong><span style="color:#BFC9C2;">— 맥락. 컨테이너 없이 본문만 ①</span></div>
+        <div style="display:flex;gap:12px;align-items:center;font-size:14px;"><span style="width:22px;height:22px;border-radius:50%;background:#005143;color:#B8E7DA;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;">4</span><strong>주제 키워드</strong><span style="color:#BFC9C2;">— 스캔 진입점. 헤더 아래 칩, 섹션 아님</span></div>
+        <div style="display:flex;gap:12px;align-items:center;font-size:14px;"><span style="width:22px;height:22px;border-radius:50%;background:#262B29;color:#BFC9C2;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;">0</span><strong>헤더</strong><span style="color:#BFC9C2;">— 메타데이터. 스티키 앱바로 흡수, Card 제거</span></div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <div style="display:flex;flex-direction:column;gap:20px;">
+    <div style="font-family:'Jua','BMJUA',sans-serif;font-size:28px;">화면 시안 — 라이트</div>
+    <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;">
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#414944;">홈 · 단톡방 목록</div>
+        <div style="width:390px;height:844px;border:10px solid #1A211E;border-radius:44px;box-sizing:border-box;overflow:hidden;background:#F6FBF7;display:flex;flex-direction:column;box-shadow:0 18px 40px rgba(16,32,28,.18);">
+          <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;color:#191C1B;flex:none;"><span>9:41</span><span style="display:flex;gap:5px;"><span class="ms" style="font-size:15px;">signal_cellular_alt</span><span class="ms" style="font-size:15px;">battery_full</span></span></div>
+          <div style="padding:8px 16px 12px;display:flex;align-items:center;justify-content:space-between;flex:none;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:26px;height:26px;border-radius:50%;border:3px solid #1F5C50;box-sizing:border-box;display:flex;align-items:center;justify-content:center;"><div style="width:7px;height:7px;border-radius:50%;background:#E0A722;"></div></div>
+              <span style="font-family:'Jua','BMJUA',sans-serif;font-size:24px;">톡비서</span>
+            </div>
+            <span class="ms" style="font-size:24px;color:#414944;">search</span>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:0 16px;display:flex;flex-direction:column;gap:12px;">
+            <div style="background:#FFF;border-radius:20px;padding:16px;box-shadow:0 1px 3px rgba(16,32,28,.14);display:flex;gap:14px;align-items:center;">
+              <div style="width:48px;height:48px;border-radius:16px;background:#B8E7DA;color:#05201A;display:flex;align-items:center;justify-content:center;flex:none;"><span class="ms" style="font-size:26px;">forum</span></div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;">
+                <div style="font-weight:700;font-size:16px;">Flutter 한국 사용자 모임</div>
+                <div style="font-size:12.5px;color:#414944;">12일 요약 완료 · 4,281개 메시지</div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#7A5300;font-weight:600;"><span class="ms" style="font-size:14px;">auto_awesome</span>오늘 요약 준비됨</div>
+              </div>
+              <span class="ms" style="font-size:22px;color:#717972;">more_vert</span>
+            </div>
+            <div style="background:#FFF;border-radius:20px;padding:16px;box-shadow:0 1px 3px rgba(16,32,28,.14);display:flex;gap:14px;align-items:center;">
+              <div style="width:48px;height:48px;border-radius:16px;background:#B8E7DA;color:#05201A;display:flex;align-items:center;justify-content:center;flex:none;"><span class="ms" style="font-size:26px;">smart_toy</span></div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
+                <div style="font-weight:700;font-size:16px;">AI 개발 스터디</div>
+                <div style="font-size:12.5px;color:#414944;">리포트 작성 중 · 6/7단계</div>
+                <div style="height:4px;border-radius:2px;background:#DDE5DF;overflow:hidden;"><div style="width:82%;height:100%;background:#1F5C50;"></div></div>
+              </div>
+              <span class="ms" style="font-size:22px;color:#717972;">more_vert</span>
+            </div>
+            <div style="background:#FFF;border-radius:20px;padding:16px;box-shadow:0 1px 3px rgba(16,32,28,.14);display:flex;gap:14px;align-items:center;">
+              <div style="width:48px;height:48px;border-radius:16px;background:#B8E7DA;color:#05201A;display:flex;align-items:center;justify-content:center;flex:none;"><span class="ms" style="font-size:26px;">code_blocks</span></div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;">
+                <div style="font-weight:700;font-size:16px;">프론트엔드 초보방</div>
+                <div style="font-size:12.5px;color:#414944;">5일 요약 완료 · 1,102개 메시지</div>
+              </div>
+              <span class="ms" style="font-size:22px;color:#717972;">more_vert</span>
+            </div>
+            <div style="background:#FFDAD6;border-radius:16px;padding:14px;display:flex;gap:10px;align-items:flex-start;">
+              <span class="ms" style="font-size:20px;color:#93000A;">error</span>
+              <div style="flex:1;font-size:13px;line-height:1.6;color:#410002;"><strong>업로드 실패</strong> — 파일 형식을 확인해 주세요.</div>
+              <span style="font-size:13px;font-weight:700;color:#93000A;">다시 시도</span>
+            </div>
+          </div>
+          <div style="padding:16px;display:flex;justify-content:flex-end;flex:none;">
+            <div style="height:56px;border-radius:18px;background:#FFE08A;color:#2A1C00;display:flex;align-items:center;gap:10px;padding:0 20px;box-shadow:0 3px 8px rgba(16,32,28,.18);"><span class="ms" style="font-size:24px;">add</span><span style="font-family:'Jua','BMJUA',sans-serif;font-size:17px;">단톡방 추가</span></div>
+          </div>
+          <div style="height:76px;background:#EBF1EC;display:flex;align-items:flex-start;padding-top:10px;flex:none;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#414944;"><span class="ms" style="font-size:24px;">calendar_month</span><span style="font-size:11.5px;font-weight:600;">달력</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#05201A;"><span style="background:#B8E7DA;border-radius:999px;padding:4px 18px;"><span class="ms" style="font-size:24px;">home</span></span><span style="font-size:11.5px;font-weight:700;">홈</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#414944;"><span class="ms" style="font-size:24px;">send</span><span style="font-size:11.5px;font-weight:600;">발행</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#414944;"><span class="ms" style="font-size:24px;">settings</span><span style="font-size:11.5px;font-weight:600;">설정</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#414944;">요약 상세 · 스크롤 전체 (핵심 화면)</div>
+        <div style="width:390px;height:1960px;border:10px solid #1A211E;border-radius:44px;box-sizing:border-box;overflow:hidden;background:#F6FBF7;display:flex;flex-direction:column;box-shadow:0 18px 40px rgba(16,32,28,.18);">
+          <div style="position:sticky;top:0;background:#EBF1EC;flex:none;">
+            <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;"><span>9:41</span><span style="display:flex;gap:5px;"><span class="ms" style="font-size:15px;">signal_cellular_alt</span><span class="ms" style="font-size:15px;">battery_full</span></span></div>
+            <div style="padding:4px 8px 10px 8px;display:flex;align-items:center;gap:8px;">
+              <span class="ms" style="font-size:24px;color:#191C1B;padding:8px;">arrow_back</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Flutter 한국 사용자 모임</div>
+                <div style="font-size:12px;color:#414944;margin-top:2px;">8월 15일 · 342개 메시지 분석</div>
+              </div>
+              <span class="ms" style="font-size:22px;color:#414944;padding:8px;">ios_share</span>
+            </div>
+            <div style="display:flex;gap:6px;padding:0 12px 10px;overflow:hidden;">
+              <span style="font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:999px;background:#1F5C50;color:#fff;">제안 3</span>
+              <span style="font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid #C0C9C2;color:#414944;">핵심 4</span>
+              <span style="font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid #C0C9C2;color:#414944;">대화</span>
+              <span style="font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid #C0C9C2;color:#414944;">키워드</span>
+            </div>
+          </div>
+          <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:28px;">
+
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <span style="font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;background:#FFE08A;color:#2A1C00;">Riverpod</span>
+              <span style="font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;background:#FFE08A;color:#2A1C00;">상태관리</span>
+              <span style="font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;background:#FFE08A;color:#2A1C00;">go_router</span>
+              <span style="font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;background:#FFE08A;color:#2A1C00;">Impeller</span>
+              <span style="font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;background:#FFE08A;color:#2A1C00;">코드푸시</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:22px;height:22px;border-radius:50%;border:3px solid #1F5C50;box-sizing:border-box;display:flex;align-items:center;justify-content:center;"><div style="width:6px;height:6px;border-radius:50%;background:#E0A722;"></div></div>
+                <span style="font-family:'Jua','BMJUA',sans-serif;font-size:24px;">톡비서 제안</span>
+                <span style="font-size:12px;font-weight:600;color:#414944;">오늘 이것만 보면 됩니다</span>
+              </div>
+              <div style="background:#FFF;border-radius:20px;box-shadow:0 1px 3px rgba(16,32,28,.14);border-left:4px solid #E0A722;overflow:hidden;">
+                <div style="padding:16px 16px 14px;display:flex;flex-direction:column;gap:10px;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:11px;font-weight:700;color:#7A5300;background:#FFF3CD;padding:3px 8px;border-radius:6px;">1순위 · 30분</span>
+                    <span style="font-size:11.5px;color:#717972;">언급 18회</span>
+                  </div>
+                  <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;line-height:1.35;">Riverpod 3.0 마이그레이션 훑기</div>
+                  <div style="font-size:15px;line-height:1.7;color:#28312C;">방에서 가장 많이 나온 주제입니다. <code style="font-family:ui-monospace,monospace;font-size:13.5px;background:#EBF1EC;padding:1px 5px;border-radius:5px;">StateNotifier</code> 폐기 흐름만 먼저 이해하면 나머지 대화가 다 읽힙니다.</div>
+                  <div style="background:#EBF1EC;border-radius:12px;padding:12px;font-size:14px;line-height:1.65;color:#28312C;">🎯 <strong>학습 목표</strong> — 기존 <code style="font-family:ui-monospace,monospace;font-size:13px;">StateNotifierProvider</code> 하나를 <code style="font-family:ui-monospace,monospace;font-size:13px;">NotifierProvider</code>로 바꿔보기</div>
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="display:flex;gap:8px;align-items:center;font-size:14px;"><span class="ms" style="font-size:18px;color:#1F5C50;">link</span><a href="#1a">공식 마이그레이션 가이드</a></div>
+                    <div style="display:flex;gap:8px;align-items:center;font-size:14px;"><span class="ms" style="font-size:18px;color:#93000A;">play_circle</span><a href="#1a">Riverpod 3 총정리 (14분)</a></div>
+                  </div>
+                </div>
+              </div>
+              <div style="background:#FFF;border-radius:20px;box-shadow:0 1px 3px rgba(16,32,28,.14);border-left:4px solid #C0C9C2;padding:16px;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#414944;background:#EBF1EC;padding:3px 8px;border-radius:6px;">2순위 · 15분</span></div>
+                <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">Impeller 렌더링 이슈 체크</div>
+                <div style="font-size:15px;line-height:1.7;color:#28312C;">iOS 셰이더 지연 이야기가 반복됐습니다. 내 앱에 해당하는지 확인만.</div>
+                <div style="display:flex;gap:8px;align-items:center;font-size:14px;"><span class="ms" style="font-size:18px;color:#1F5C50;">link</span><a href="#1a">Impeller 현황 문서</a></div>
+              </div>
+              <div style="background:#FFF;border-radius:20px;box-shadow:0 1px 3px rgba(16,32,28,.14);border-left:4px solid #C0C9C2;padding:16px;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#414944;background:#EBF1EC;padding:3px 8px;border-radius:6px;">3순위 · 10분</span></div>
+                <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">go_router 딥링크 패턴</div>
+                <div style="font-size:15px;line-height:1.7;color:#28312C;">질문 3건이 같은 지점에서 막혔습니다. 예제 1개면 충분합니다.</div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-family:'Jua','BMJUA',sans-serif;font-size:22px;">핵심 정보</span>
+                <span style="font-size:12.5px;font-weight:600;color:#1F5C50;">모두 펼치기</span>
+              </div>
+              <div style="border:1px solid #C0C9C2;border-radius:16px;overflow:hidden;">
+                <div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px;background:#F6FBF7;">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="flex:1;font-weight:700;font-size:15.5px;">Riverpod 3.0 변경점</div>
+                    <span style="font-size:11px;color:#414944;background:#EBF1EC;padding:3px 7px;border-radius:6px;">출처 3</span>
+                    <span class="ms" style="font-size:22px;color:#414944;">expand_more</span>
+                  </div>
+                  <div style="font-size:13.5px;line-height:1.6;color:#414944;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">StateNotifier 계열 API가 정리되고 Notifier로 통합 — 코드 제너레이션…</div>
+                </div>
+                <div style="border-top:1px solid #DDE5DF;padding:14px 16px;background:#F1F6F1;display:flex;flex-direction:column;gap:10px;">
+                  <div style="font-size:15px;line-height:1.7;">Notifier/AsyncNotifier가 기본이 되고, <code style="font-family:ui-monospace,monospace;font-size:13.5px;background:#E5EBE6;padding:1px 5px;border-radius:5px;">ref.watch</code> 의존성 추적 방식이 단순해졌습니다.</div>
+                  <ul style="margin:0;padding-left:18px;font-size:15px;line-height:1.8;color:#28312C;">
+                    <li>자동 dispose가 기본값으로 변경</li>
+                    <li>테스트에서 <code style="font-family:ui-monospace,monospace;font-size:13.5px;background:#E5EBE6;padding:1px 5px;border-radius:5px;">ProviderContainer</code> 사용법 간소화</li>
+                  </ul>
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div style="display:flex;gap:8px;align-items:center;font-size:14px;"><span class="ms" style="font-size:18px;color:#1F5C50;">link</span><a href="#1a">riverpod.dev — What's new</a></div>
+                    <div style="display:flex;gap:8px;align-items:center;font-size:14px;"><span class="ms" style="font-size:18px;color:#93000A;">play_circle</span><a href="#1a">유튜브 · Riverpod 3 실전</a></div>
+                  </div>
+                </div>
+              </div>
+              <div style="border:1px solid #C0C9C2;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;align-items:center;gap:10px;"><div style="flex:1;font-weight:700;font-size:15.5px;">Impeller 셰이더 지연</div><span style="font-size:11px;color:#414944;background:#EBF1EC;padding:3px 7px;border-radius:6px;">출처 2</span><span class="ms" style="font-size:22px;color:#414944;">expand_more</span></div>
+                <div style="font-size:13.5px;line-height:1.6;color:#414944;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">iOS 17 이후 첫 프레임 지연 사례와 우회 방법 정리…</div>
+              </div>
+              <div style="border:1px solid #C0C9C2;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;align-items:center;gap:10px;"><div style="flex:1;font-weight:700;font-size:15.5px;">go_router 6.x 딥링크</div><span style="font-size:11px;color:#414944;background:#EBF1EC;padding:3px 7px;border-radius:6px;">출처 3</span><span class="ms" style="font-size:22px;color:#414944;">expand_more</span></div>
+                <div style="font-size:13.5px;line-height:1.6;color:#414944;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">ShellRoute 중첩 시 초기 경로 복원이 실패하는 조건…</div>
+              </div>
+              <div style="border:1px solid #C0C9C2;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:10px;"><div style="flex:1;font-weight:700;font-size:15.5px;">코드푸시 대안 비교</div><span style="font-size:11px;color:#414944;background:#EBF1EC;padding:3px 7px;border-radius:6px;">출처 2</span><span class="ms" style="font-size:22px;color:#414944;">expand_more</span></div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <span style="font-family:'Jua','BMJUA',sans-serif;font-size:22px;">대화 주요 내용</span>
+              <div style="font-size:15.5px;line-height:1.8;color:#28312C;">오늘 방은 대부분 <strong>Riverpod 3.0 업그레이드</strong> 이야기였습니다. 실무 적용 후 겪은 문제와 해결법이 오갔고, 후반에는 iOS 렌더링 이슈로 주제가 옮겨갔습니다.</div>
+              <ul style="margin:0;padding-left:18px;font-size:15.5px;line-height:1.85;color:#28312C;">
+                <li>마이그레이션은 provider 단위로 점진 적용이 안전하다는 결론</li>
+                <li>Impeller 관련 첫 프레임 지연 재현 사례 2건 공유</li>
+                <li>딥링크 초기 경로 복원 질문 3건 — 아직 미해결</li>
+              </ul>
+              <div style="background:#EBF1EC;border-radius:12px;padding:12px 14px;font-size:14.5px;line-height:1.7;color:#28312C;border-left:3px solid #B8E7DA;">💡 오늘 대화의 80%는 상태관리 한 주제에 몰려 있었습니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#414944;">AI 처리 중 · 말풍선 진행 로그</div>
+        <div style="width:390px;height:844px;border:10px solid #1A211E;border-radius:44px;box-sizing:border-box;overflow:hidden;background:#EBF1EC;display:flex;flex-direction:column;box-shadow:0 18px 40px rgba(16,32,28,.18);">
+          <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;flex:none;"><span>9:41</span><span style="display:flex;gap:5px;"><span class="ms" style="font-size:15px;">signal_cellular_alt</span><span class="ms" style="font-size:15px;">battery_full</span></span></div>
+          <div style="padding:6px 8px 12px;display:flex;align-items:center;gap:8px;flex:none;">
+            <span class="ms" style="font-size:24px;padding:8px;">close</span>
+            <div style="flex:1;"><div style="font-family:'Jua','BMJUA',sans-serif;font-size:18px;">리포트 만들고 있어요</div><div style="font-size:12px;color:#414944;">5/7단계 · 약 40초 남음</div></div>
+          </div>
+          <div style="height:4px;background:#DDE5DF;flex:none;"><div style="width:{{ progressPct }};height:100%;background:#1F5C50;"></div></div>
+          <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;gap:10px;align-items:flex-start;opacity:.55;">
+              <div style="width:30px;height:30px;border-radius:50%;border:3px solid #1F5C50;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex:none;"><div style="width:8px;height:8px;border-radius:50%;background:#E0A722;"></div></div>
+              <div style="background:#FFF;border-radius:4px 16px 16px 16px;padding:11px 14px;font-size:14.5px;line-height:1.6;display:flex;gap:8px;align-items:center;"><span class="ms" style="font-size:18px;color:#1F5C50;">check_circle</span>잡담 342개 중 118개만 남겼어요</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;opacity:.55;">
+              <div style="width:30px;flex:none;"></div>
+              <div style="background:#FFF;border-radius:16px;padding:11px 14px;font-size:14.5px;line-height:1.6;display:flex;gap:8px;align-items:center;"><span class="ms" style="font-size:18px;color:#1F5C50;">check_circle</span>주제 5개를 뽑았어요</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;opacity:.55;">
+              <div style="width:30px;flex:none;"></div>
+              <div style="background:#FFF;border-radius:16px;padding:11px 14px;font-size:14.5px;line-height:1.6;display:flex;gap:8px;align-items:center;"><span class="ms" style="font-size:18px;color:#1F5C50;">check_circle</span>무엇을 조사할지 계획했어요</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div style="width:30px;flex:none;"></div>
+              <div style="background:#FFF;border-radius:16px;padding:12px 14px;font-size:14.5px;line-height:1.6;display:flex;flex-direction:column;gap:8px;flex:1;">
+                <div style="display:flex;gap:8px;align-items:center;font-weight:700;"><span class="ms" style="font-size:18px;color:#7A5300;">travel_explore</span>웹과 유튜브를 같이 뒤지고 있어요</div>
+                <div style="display:flex;gap:8px;">
+                  <div style="flex:1;background:#F1F6F1;border-radius:10px;padding:8px 10px;font-size:12.5px;color:#28312C;">웹 검색 <strong>9/12</strong></div>
+                  <div style="flex:1;background:#F1F6F1;border-radius:10px;padding:8px 10px;font-size:12.5px;color:#28312C;">유튜브 <strong>4/5</strong></div>
+                </div>
+                <div style="font-size:12.5px;color:#717972;">riverpod.dev/docs/whats_new 읽는 중…</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <div style="width:30px;flex:none;"></div>
+              <div style="background:#FFE08A;color:#2A1C00;border-radius:16px;padding:12px 14px;font-size:14.5px;font-weight:600;display:flex;gap:10px;align-items:center;">자료가 믿을 만한지 확인하는 중<span style="display:flex;gap:4px;"><span style="width:6px;height:6px;border-radius:50%;background:#7A5300;"></span><span style="width:6px;height:6px;border-radius:50%;background:#7A5300;opacity:.5;"></span><span style="width:6px;height:6px;border-radius:50%;background:#7A5300;opacity:.25;"></span></span></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;opacity:.4;">
+              <div style="width:30px;flex:none;"></div>
+              <div style="border:1px dashed #C0C9C2;border-radius:16px;padding:11px 14px;font-size:14px;color:#414944;">리포트 쓰기 — 대기 중</div>
+            </div>
+            <div style="margin-top:auto;background:#F6FBF7;border-radius:16px;padding:14px;display:flex;gap:10px;align-items:center;">
+              <span class="ms" style="font-size:20px;color:#414944;">bolt</span>
+              <div style="flex:1;font-size:13px;line-height:1.6;color:#414944;">백그라운드로 돌려도 계속 진행됩니다. 끝나면 알려드릴게요.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#414944;">방 상세 · 업로드 + 날짜별 요약</div>
+        <div style="width:390px;height:844px;border:10px solid #1A211E;border-radius:44px;box-sizing:border-box;overflow:hidden;background:#F6FBF7;display:flex;flex-direction:column;box-shadow:0 18px 40px rgba(16,32,28,.18);">
+          <div style="background:#EBF1EC;flex:none;">
+            <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;"><span>9:41</span><span style="display:flex;gap:5px;"><span class="ms" style="font-size:15px;">signal_cellular_alt</span><span class="ms" style="font-size:15px;">battery_full</span></span></div>
+            <div style="padding:4px 8px 12px;display:flex;align-items:center;gap:8px;">
+              <span class="ms" style="font-size:24px;padding:8px;">arrow_back</span>
+              <div style="flex:1;"><div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">Flutter 한국 사용자 모임</div><div style="font-size:12px;color:#414944;">12일 요약 · 4,281개 메시지</div></div>
+              <span class="ms" style="font-size:22px;padding:8px;color:#414944;">more_vert</span>
+            </div>
+          </div>
+          <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:20px;overflow:hidden;">
+            <div style="border:1px dashed #1F5C50;border-radius:16px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:8px;background:#F1F6F1;">
+              <span class="ms" style="font-size:32px;color:#1F5C50;">upload_file</span>
+              <div style="font-family:'Jua','BMJUA',sans-serif;font-size:17px;">대화 내보내기 파일 올리기</div>
+              <div style="font-size:12.5px;color:#414944;text-align:center;line-height:1.6;">카카오톡 → 채팅방 → 대화 내용 내보내기<br>(.txt)</div>
+              <div style="margin-top:6px;height:44px;padding:0 20px;border-radius:14px;background:#1F5C50;color:#fff;display:flex;align-items:center;font-size:15px;font-weight:700;">파일 선택</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-family:'Jua','BMJUA',sans-serif;font-size:20px;">날짜별 요약</span><span style="font-size:12.5px;font-weight:600;color:#1F5C50;">날짜 선택</span></div>
+              <div style="border:1px solid #C0C9C2;border-radius:16px;overflow:hidden;">
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;">
+                  <div style="width:44px;text-align:center;flex:none;"><div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">15</div><div style="font-size:11px;color:#717972;">8월</div></div>
+                  <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:15px;">Riverpod 3.0 마이그레이션</div><div style="font-size:12.5px;color:#414944;">342개 메시지 · 제안 3</div></div>
+                  <span class="ms" style="font-size:20px;color:#717972;">chevron_right</span>
+                </div>
+                <div style="border-top:1px solid #DDE5DF;padding:14px 16px;display:flex;align-items:center;gap:12px;">
+                  <div style="width:44px;text-align:center;flex:none;"><div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">14</div><div style="font-size:11px;color:#717972;">8월</div></div>
+                  <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:15px;">빌드 캐시 · CI 속도</div><div style="font-size:12.5px;color:#414944;">211개 메시지 · 제안 2</div></div>
+                  <span class="ms" style="font-size:20px;color:#717972;">chevron_right</span>
+                </div>
+                <div style="border-top:1px solid #DDE5DF;padding:14px 16px;display:flex;align-items:center;gap:12px;background:#F1F6F1;">
+                  <div style="width:44px;text-align:center;flex:none;"><div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">13</div><div style="font-size:11px;color:#717972;">8월</div></div>
+                  <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:15px;">요약 준비 안 됨</div><div style="font-size:12.5px;color:#414944;">메시지 18개 — 분량이 적어요</div></div>
+                  <span style="font-size:12.5px;font-weight:700;color:#1F5C50;">요약</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#414944;">발행 탭 · 상태 배지</div>
+        <div style="width:390px;height:844px;border:10px solid #1A211E;border-radius:44px;box-sizing:border-box;overflow:hidden;background:#F6FBF7;display:flex;flex-direction:column;box-shadow:0 18px 40px rgba(16,32,28,.18);">
+          <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;flex:none;"><span>9:41</span><span style="display:flex;gap:5px;"><span class="ms" style="font-size:15px;">signal_cellular_alt</span><span class="ms" style="font-size:15px;">battery_full</span></span></div>
+          <div style="padding:8px 16px 12px;flex:none;"><div style="font-family:'Jua','BMJUA',sans-serif;font-size:24px;">발행</div><div style="font-size:12.5px;color:#414944;margin-top:2px;">매일 09:00 자동 발행 · 수동은 보조</div></div>
+          <div style="flex:1;padding:0 16px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="background:#B8E7DA;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;gap:10px;align-items:center;"><span class="ms" style="font-size:20px;color:#05201A;">cloud_upload</span><div style="flex:1;font-size:14px;font-weight:700;color:#05201A;">발행 중… 최대 3분</div><span style="font-size:12px;color:#05201A;">2/3</span></div>
+              <div style="height:4px;border-radius:2px;background:rgba(5,32,26,.18);overflow:hidden;"><div style="width:64%;height:100%;background:#1F5C50;"></div></div>
+            </div>
+            <div style="border:1px solid #C0C9C2;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:#EBF1EC;color:#414944;">초안</span><span style="font-size:11.5px;color:#717972;">8월 15일 · Flutter 한국 사용자 모임</span></div>
+              <div style="font-family:'Jua','BMJUA',sans-serif;font-size:17px;line-height:1.35;">Riverpod 3.0으로 넘어가기 전에 알아둘 것</div>
+              <div style="font-size:13.5px;line-height:1.65;color:#414944;">제안 3개 · 링크 9개 · 예상 분량 1,240자</div>
+              <div style="display:flex;gap:8px;margin-top:4px;"><div style="height:40px;flex:1;border-radius:12px;background:#1F5C50;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;">발행</div><div style="height:40px;padding:0 16px;border-radius:12px;border:1px solid #C0C9C2;color:#1F5C50;display:flex;align-items:center;font-size:14px;font-weight:700;">미리보기</div></div>
+            </div>
+            <div style="border:1px solid #C0C9C2;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:#FFDAD6;color:#93000A;">실패</span><span style="font-size:11.5px;color:#717972;">8월 13일 · AI 개발 스터디</span></div>
+              <div style="font-family:'Jua','BMJUA',sans-serif;font-size:17px;">RAG 파이프라인 정리</div>
+              <div style="font-size:13px;color:#93000A;">티스토리 토큰 만료 — 설정에서 갱신 필요</div>
+            </div>
+            <div style="border:1px solid #C0C9C2;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:6px;opacity:.75;">
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:#FFE08A;color:#2A1C00;">발행 완료</span><span style="font-size:11.5px;color:#717972;">8월 12일</span></div>
+              <div style="font-family:'Jua','BMJUA',sans-serif;font-size:17px;">Impeller 전환 후기 모음</div>
+              <div style="display:flex;gap:6px;align-items:center;font-size:13px;"><span class="ms" style="font-size:16px;color:#1F5C50;">open_in_new</span><a href="#1a">블로그에서 보기</a></div>
+            </div>
+          </div>
+          <div style="height:76px;background:#EBF1EC;display:flex;align-items:flex-start;padding-top:10px;flex:none;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#414944;"><span class="ms" style="font-size:24px;">calendar_month</span><span style="font-size:11.5px;font-weight:600;">달력</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#414944;"><span class="ms" style="font-size:24px;">home</span><span style="font-size:11.5px;font-weight:600;">홈</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#05201A;"><span style="background:#B8E7DA;border-radius:999px;padding:4px 18px;"><span class="ms" style="font-size:24px;">send</span></span><span style="font-size:11.5px;font-weight:700;">발행</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#414944;"><span class="ms" style="font-size:24px;">settings</span><span style="font-size:11.5px;font-weight:600;">설정</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#414944;">달력 탭</div>
+        <div style="width:390px;height:844px;border:10px solid #1A211E;border-radius:44px;box-sizing:border-box;overflow:hidden;background:#F6FBF7;display:flex;flex-direction:column;box-shadow:0 18px 40px rgba(16,32,28,.18);">
+          <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;flex:none;"><span>9:41</span><span style="display:flex;gap:5px;"><span class="ms" style="font-size:15px;">signal_cellular_alt</span><span class="ms" style="font-size:15px;">battery_full</span></span></div>
+          <div style="padding:8px 16px 8px;display:flex;align-items:center;justify-content:space-between;flex:none;">
+            <div style="font-family:'Jua','BMJUA',sans-serif;font-size:24px;">2026년 8월</div>
+            <div style="display:flex;gap:4px;"><span class="ms" style="font-size:22px;color:#414944;padding:6px;">chevron_left</span><span class="ms" style="font-size:22px;color:#414944;padding:6px;">chevron_right</span></div>
+          </div>
+          <div style="padding:0 12px;flex:none;">
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11.5px;color:#717972;padding-bottom:6px;"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+            <sc-for list="{{ calWeeks }}" as="week" hint-placeholder-count="5">
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);">
+                <sc-for list="{{ week }}" as="day" hint-placeholder-count="7">
+                  <div style="height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
+                    <span style="font-size:14.5px;color:#191C1B;">{{ day.n }}</span>
+                    <span style="width:5px;height:5px;border-radius:50%;background:{{ day.dot }};"></span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+          <div style="padding:10px 16px 0;flex:none;"><div style="display:flex;gap:14px;font-size:11.5px;color:#414944;align-items:center;"><span style="display:flex;gap:5px;align-items:center;"><span style="width:6px;height:6px;border-radius:50%;background:#1F5C50;"></span>요약 있음</span><span style="display:flex;gap:5px;align-items:center;"><span style="width:6px;height:6px;border-radius:50%;background:#E0A722;"></span>발행됨</span></div></div>
+          <div style="flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:10px;overflow:hidden;">
+            <div style="font-family:'Jua','BMJUA',sans-serif;font-size:20px;">8월 15일 · 2개 리포트</div>
+            <div style="border:1px solid #C0C9C2;border-radius:16px;padding:14px;display:flex;align-items:center;gap:12px;">
+              <div style="width:40px;height:40px;border-radius:12px;background:#B8E7DA;color:#05201A;display:flex;align-items:center;justify-content:center;flex:none;"><span class="ms" style="font-size:22px;">forum</span></div>
+              <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:15px;">Flutter 한국 사용자 모임</div><div style="font-size:12.5px;color:#414944;">제안 3 · 키워드 5</div></div>
+              <span class="ms" style="font-size:20px;color:#717972;">chevron_right</span>
+            </div>
+            <div style="border:1px solid #C0C9C2;border-radius:16px;padding:14px;display:flex;align-items:center;gap:12px;">
+              <div style="width:40px;height:40px;border-radius:12px;background:#B8E7DA;color:#05201A;display:flex;align-items:center;justify-content:center;flex:none;"><span class="ms" style="font-size:22px;">smart_toy</span></div>
+              <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:15px;">AI 개발 스터디</div><div style="font-size:12.5px;color:#414944;">제안 2 · 키워드 4</div></div>
+              <span class="ms" style="font-size:20px;color:#717972;">chevron_right</span>
+            </div>
+          </div>
+          <div style="height:76px;background:#EBF1EC;display:flex;align-items:flex-start;padding-top:10px;flex:none;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#05201A;"><span style="background:#B8E7DA;border-radius:999px;padding:4px 18px;"><span class="ms" style="font-size:24px;">calendar_month</span></span><span style="font-size:11.5px;font-weight:700;">달력</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#414944;"><span class="ms" style="font-size:24px;">home</span><span style="font-size:11.5px;font-weight:600;">홈</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#414944;"><span class="ms" style="font-size:24px;">send</span><span style="font-size:11.5px;font-weight:600;">발행</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#414944;"><span class="ms" style="font-size:24px;">settings</span><span style="font-size:11.5px;font-weight:600;">설정</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#414944;">설정 · 그룹 + 위험 구역 분리</div>
+        <div style="width:390px;height:844px;border:10px solid #1A211E;border-radius:44px;box-sizing:border-box;overflow:hidden;background:#F6FBF7;display:flex;flex-direction:column;box-shadow:0 18px 40px rgba(16,32,28,.18);">
+          <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;flex:none;"><span>9:41</span><span style="display:flex;gap:5px;"><span class="ms" style="font-size:15px;">signal_cellular_alt</span><span class="ms" style="font-size:15px;">battery_full</span></span></div>
+          <div style="padding:8px 16px 12px;flex:none;"><div style="font-family:'Jua','BMJUA',sans-serif;font-size:24px;">설정</div></div>
+          <div style="flex:1;padding:0 16px;display:flex;flex-direction:column;gap:22px;overflow:hidden;">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="font-size:12px;font-weight:700;color:#1F5C50;letter-spacing:.04em;">연결 상태</div>
+              <div style="border:1px solid #C0C9C2;border-radius:16px;overflow:hidden;">
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;"><span class="ms" style="font-size:22px;color:#1F5C50;">dns</span><div style="flex:1;"><div style="font-size:15px;font-weight:600;">서버</div><div style="font-size:12.5px;color:#414944;">api.tokbiseo.app</div></div><span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;background:#B8E7DA;color:#05201A;">정상</span></div>
+                <div style="border-top:1px solid #DDE5DF;padding:14px 16px;display:flex;align-items:center;gap:12px;"><span class="ms" style="font-size:22px;color:#1F5C50;">key</span><div style="flex:1;"><div style="font-size:15px;font-weight:600;">API 키</div><div style="font-size:12.5px;color:#414944;font-family:ui-monospace,monospace;">sk-••••••••••4f2a</div></div><span style="font-size:12.5px;font-weight:700;color:#1F5C50;">변경</span></div>
+                <div style="border-top:1px solid #DDE5DF;padding:14px 16px;display:flex;align-items:center;gap:12px;"><span class="ms" style="font-size:22px;color:#93000A;">rss_feed</span><div style="flex:1;"><div style="font-size:15px;font-weight:600;">티스토리 토큰</div><div style="font-size:12.5px;color:#93000A;">만료됨 · 갱신 필요</div></div><span style="font-size:12.5px;font-weight:700;color:#93000A;">갱신</span></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="font-size:12px;font-weight:700;color:#1F5C50;letter-spacing:.04em;">리포트 &amp; 발행</div>
+              <div style="border:1px solid #C0C9C2;border-radius:16px;overflow:hidden;">
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;"><div style="flex:1;"><div style="font-size:15px;font-weight:600;">매일 자동 발행</div><div style="font-size:12.5px;color:#414944;">09:00 · 1건</div></div><div style="width:48px;height:28px;border-radius:999px;background:#1F5C50;display:flex;align-items:center;justify-content:flex-end;padding:3px;box-sizing:border-box;"><div style="width:22px;height:22px;border-radius:50%;background:#fff;"></div></div></div>
+                <div style="border-top:1px solid #DDE5DF;padding:14px 16px;display:flex;align-items:center;gap:12px;"><div style="flex:1;"><div style="font-size:15px;font-weight:600;">잡담 필터 강도</div><div style="font-size:12.5px;color:#414944;">보통</div></div><span class="ms" style="font-size:20px;color:#717972;">chevron_right</span></div>
+                <div style="border-top:1px solid #DDE5DF;padding:14px 16px;display:flex;align-items:center;gap:12px;"><div style="flex:1;"><div style="font-size:15px;font-weight:600;">테마</div><div style="font-size:12.5px;color:#414944;">시스템 설정 따르기</div></div><span class="ms" style="font-size:20px;color:#717972;">chevron_right</span></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="font-size:12px;font-weight:700;color:#93000A;letter-spacing:.04em;">데이터</div>
+              <div style="border:1px solid #FFDAD6;border-radius:16px;overflow:hidden;">
+                <div style="padding:14px 16px;display:flex;align-items:center;gap:12px;"><div style="flex:1;font-size:15px;font-weight:600;color:#93000A;">모든 요약 삭제</div><span class="ms" style="font-size:20px;color:#93000A;">chevron_right</span></div>
+              </div>
+              <div style="font-size:12px;color:#717972;padding-left:2px;">되돌릴 수 없습니다. 서버 데이터도 함께 지워집니다.</div>
+            </div>
+          </div>
+          <div style="height:76px;background:#EBF1EC;display:flex;align-items:flex-start;padding-top:10px;flex:none;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#414944;"><span class="ms" style="font-size:24px;">calendar_month</span><span style="font-size:11.5px;font-weight:600;">달력</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#414944;"><span class="ms" style="font-size:24px;">home</span><span style="font-size:11.5px;font-weight:600;">홈</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#414944;"><span class="ms" style="font-size:24px;">send</span><span style="font-size:11.5px;font-weight:600;">발행</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#05201A;"><span style="background:#B8E7DA;border-radius:999px;padding:4px 18px;"><span class="ms" style="font-size:24px;">settings</span></span><span style="font-size:11.5px;font-weight:700;">설정</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#414944;">빈 상태 모음 + 다이얼로그</div>
+        <div style="width:390px;display:flex;flex-direction:column;gap:16px;">
+          <div style="background:#F6FBF7;border:1px solid #C0C9C2;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;">
+            <div style="width:80px;height:80px;border-radius:50%;border:8px solid #B8E7DA;box-sizing:border-box;display:flex;align-items:center;justify-content:center;"><div style="width:18px;height:18px;border-radius:50%;background:#E0A722;"></div></div>
+            <div style="font-family:'Jua','BMJUA',sans-serif;font-size:21px;">아직 등록한 단톡방이 없어요</div>
+            <div style="font-size:14.5px;line-height:1.7;color:#414944;">대화 내보내기 파일 하나만 올리면<br>오늘 무슨 기술 이야기가 나왔는지 정리해 드려요.</div>
+            <div style="margin-top:6px;height:48px;padding:0 22px;border-radius:16px;background:#1F5C50;color:#fff;display:flex;align-items:center;font-size:15px;font-weight:700;">단톡방 추가하기</div>
+          </div>
+          <div style="background:#F6FBF7;border:1px solid #C0C9C2;border-radius:24px;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;">
+            <span class="ms" style="font-size:44px;color:#B8E7DA;">drafts</span>
+            <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">발행 대기 중인 리포트가 없어요</div>
+            <div style="font-size:14px;line-height:1.7;color:#414944;">매일 09:00에 한 건씩 자동으로 발행됩니다.</div>
+          </div>
+          <div style="background:#FFF;border-radius:28px;padding:24px;box-shadow:0 8px 24px rgba(16,32,28,.2);display:flex;flex-direction:column;gap:12px;">
+            <div style="font-family:'Jua','BMJUA',sans-serif;font-size:21px;">지금 발행할까요?</div>
+            <div style="font-size:15px;line-height:1.7;color:#414944;">‘Riverpod 3.0으로 넘어가기 전에 알아둘 것’이 티스토리에 공개됩니다. 최대 3분 걸려요.</div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;"><div style="height:40px;padding:0 16px;display:flex;align-items:center;font-size:15px;font-weight:700;color:#1F5C50;">취소</div><div style="height:40px;padding:0 18px;border-radius:12px;background:#1F5C50;color:#fff;display:flex;align-items:center;font-size:15px;font-weight:700;">발행</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <sc-if value="{{ showDarkScreens }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex;flex-direction:column;gap:20px;background:#0F1513;margin:0 -72px;padding:48px 72px;">
+    <div style="font-family:'Jua','BMJUA',sans-serif;font-size:28px;color:#E1E3E0;">화면 시안 — 다크</div>
+    <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;">
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#BFC9C2;">홈 · 다크</div>
+        <div style="width:390px;height:844px;border:10px solid #262B29;border-radius:44px;box-sizing:border-box;overflow:hidden;background:#0F1513;display:flex;flex-direction:column;color:#E1E3E0;">
+          <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;flex:none;"><span>9:41</span><span style="display:flex;gap:5px;"><span class="ms" style="font-size:15px;">signal_cellular_alt</span><span class="ms" style="font-size:15px;">battery_full</span></span></div>
+          <div style="padding:8px 16px 12px;display:flex;align-items:center;justify-content:space-between;flex:none;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:26px;height:26px;border-radius:50%;border:3px solid #9CD1C1;box-sizing:border-box;display:flex;align-items:center;justify-content:center;"><div style="width:7px;height:7px;border-radius:50%;background:#F5C453;"></div></div>
+              <span style="font-family:'Jua','BMJUA',sans-serif;font-size:24px;">톡비서</span>
+            </div>
+            <span class="ms" style="font-size:24px;color:#BFC9C2;">search</span>
+          </div>
+          <div style="flex:1;padding:0 16px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="background:#1B211F;border-radius:20px;padding:16px;display:flex;gap:14px;align-items:center;">
+              <div style="width:48px;height:48px;border-radius:16px;background:#005143;color:#B8E7DA;display:flex;align-items:center;justify-content:center;flex:none;"><span class="ms" style="font-size:26px;">forum</span></div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;">
+                <div style="font-weight:700;font-size:16px;">Flutter 한국 사용자 모임</div>
+                <div style="font-size:12.5px;color:#BFC9C2;">12일 요약 완료 · 4,281개 메시지</div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#F5C453;font-weight:600;"><span class="ms" style="font-size:14px;">auto_awesome</span>오늘 요약 준비됨</div>
+              </div>
+              <span class="ms" style="font-size:22px;color:#8A938C;">more_vert</span>
+            </div>
+            <div style="background:#1B211F;border-radius:20px;padding:16px;display:flex;gap:14px;align-items:center;">
+              <div style="width:48px;height:48px;border-radius:16px;background:#005143;color:#B8E7DA;display:flex;align-items:center;justify-content:center;flex:none;"><span class="ms" style="font-size:26px;">smart_toy</span></div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
+                <div style="font-weight:700;font-size:16px;">AI 개발 스터디</div>
+                <div style="font-size:12.5px;color:#BFC9C2;">리포트 작성 중 · 6/7단계</div>
+                <div style="height:4px;border-radius:2px;background:#2E3532;overflow:hidden;"><div style="width:82%;height:100%;background:#9CD1C1;"></div></div>
+              </div>
+              <span class="ms" style="font-size:22px;color:#8A938C;">more_vert</span>
+            </div>
+            <div style="background:#1B211F;border-radius:20px;padding:16px;display:flex;gap:14px;align-items:center;">
+              <div style="width:48px;height:48px;border-radius:16px;background:#005143;color:#B8E7DA;display:flex;align-items:center;justify-content:center;flex:none;"><span class="ms" style="font-size:26px;">code_blocks</span></div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;">
+                <div style="font-weight:700;font-size:16px;">프론트엔드 초보방</div>
+                <div style="font-size:12.5px;color:#BFC9C2;">5일 요약 완료 · 1,102개 메시지</div>
+              </div>
+              <span class="ms" style="font-size:22px;color:#8A938C;">more_vert</span>
+            </div>
+          </div>
+          <div style="padding:16px;display:flex;justify-content:flex-end;flex:none;">
+            <div style="height:56px;border-radius:18px;background:#5A4300;color:#FFE08A;display:flex;align-items:center;gap:10px;padding:0 20px;"><span class="ms" style="font-size:24px;">add</span><span style="font-family:'Jua','BMJUA',sans-serif;font-size:17px;">단톡방 추가</span></div>
+          </div>
+          <div style="height:76px;background:#1B211F;display:flex;align-items:flex-start;padding-top:10px;flex:none;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#BFC9C2;"><span class="ms" style="font-size:24px;">calendar_month</span><span style="font-size:11.5px;font-weight:600;">달력</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#B8E7DA;"><span style="background:#005143;border-radius:999px;padding:4px 18px;"><span class="ms" style="font-size:24px;">home</span></span><span style="font-size:11.5px;font-weight:700;">홈</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#BFC9C2;"><span class="ms" style="font-size:24px;">send</span><span style="font-size:11.5px;font-weight:600;">발행</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:#BFC9C2;"><span class="ms" style="font-size:24px;">settings</span><span style="font-size:11.5px;font-weight:600;">설정</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#BFC9C2;">요약 상세 · 다크</div>
+        <div style="width:390px;height:844px;border:10px solid #262B29;border-radius:44px;box-sizing:border-box;overflow:hidden;background:#0F1513;display:flex;flex-direction:column;color:#E1E3E0;">
+          <div style="background:#1B211F;flex:none;">
+            <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;"><span>9:41</span><span style="display:flex;gap:5px;"><span class="ms" style="font-size:15px;">signal_cellular_alt</span><span class="ms" style="font-size:15px;">battery_full</span></span></div>
+            <div style="padding:4px 8px 10px;display:flex;align-items:center;gap:8px;">
+              <span class="ms" style="font-size:24px;padding:8px;">arrow_back</span>
+              <div style="flex:1;min-width:0;"><div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Flutter 한국 사용자 모임</div><div style="font-size:12px;color:#BFC9C2;">8월 15일 · 342개 메시지 분석</div></div>
+              <span class="ms" style="font-size:22px;color:#BFC9C2;padding:8px;">ios_share</span>
+            </div>
+            <div style="display:flex;gap:6px;padding:0 12px 10px;overflow:hidden;">
+              <span style="font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:999px;background:#9CD1C1;color:#00382F;">제안 3</span>
+              <span style="font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid #414944;color:#BFC9C2;">핵심 4</span>
+              <span style="font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid #414944;color:#BFC9C2;">대화</span>
+              <span style="font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid #414944;color:#BFC9C2;">키워드</span>
+            </div>
+          </div>
+          <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:22px;overflow:hidden;">
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <span style="font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;background:#5A4300;color:#FFE08A;">Riverpod</span>
+              <span style="font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;background:#5A4300;color:#FFE08A;">상태관리</span>
+              <span style="font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;background:#5A4300;color:#FFE08A;">go_router</span>
+              <span style="font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;background:#5A4300;color:#FFE08A;">Impeller</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:22px;height:22px;border-radius:50%;border:3px solid #9CD1C1;box-sizing:border-box;display:flex;align-items:center;justify-content:center;"><div style="width:6px;height:6px;border-radius:50%;background:#F5C453;"></div></div>
+                <span style="font-family:'Jua','BMJUA',sans-serif;font-size:24px;">톡비서 제안</span>
+              </div>
+              <div style="background:#1B211F;border-radius:20px;border-left:4px solid #F5C453;padding:16px;display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#FFE08A;background:#5A4300;padding:3px 8px;border-radius:6px;">1순위 · 30분</span><span style="font-size:11.5px;color:#8A938C;">언급 18회</span></div>
+                <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;line-height:1.35;">Riverpod 3.0 마이그레이션 훑기</div>
+                <div style="font-size:15px;line-height:1.7;color:#D6DAD7;">방에서 가장 많이 나온 주제입니다. <code style="font-family:ui-monospace,monospace;font-size:13.5px;background:#262B29;padding:1px 5px;border-radius:5px;">StateNotifier</code> 폐기 흐름만 먼저 이해하면 됩니다.</div>
+                <div style="background:#262B29;border-radius:12px;padding:12px;font-size:14px;line-height:1.65;">🎯 <strong>학습 목표</strong> — provider 1개를 Notifier로 바꿔보기</div>
+              </div>
+              <div style="background:#1B211F;border-radius:20px;border-left:4px solid #414944;padding:16px;display:flex;flex-direction:column;gap:8px;">
+                <span style="font-size:11px;font-weight:700;color:#BFC9C2;background:#262B29;padding:3px 8px;border-radius:6px;align-self:flex-start;">2순위 · 15분</span>
+                <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">Impeller 렌더링 이슈 체크</div>
+                <div style="font-size:15px;line-height:1.7;color:#D6DAD7;">iOS 셰이더 지연 이야기가 반복됐습니다.</div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <span style="font-family:'Jua','BMJUA',sans-serif;font-size:22px;">핵심 정보</span>
+              <div style="border:1px solid #414944;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;align-items:center;gap:10px;"><div style="flex:1;font-weight:700;font-size:15.5px;">Riverpod 3.0 변경점</div><span style="font-size:11px;color:#BFC9C2;background:#262B29;padding:3px 7px;border-radius:6px;">출처 3</span><span class="ms" style="font-size:22px;color:#BFC9C2;">expand_more</span></div>
+                <div style="font-size:13.5px;color:#BFC9C2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">StateNotifier 계열 API가 Notifier로 통합 —</div>
+              </div>
+              <div style="border:1px solid #414944;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:10px;"><div style="flex:1;font-weight:700;font-size:15.5px;">Impeller 셰이더 지연</div><span class="ms" style="font-size:22px;color:#BFC9C2;">expand_more</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:14px;font-weight:700;color:#BFC9C2;">AI 처리 중 · 다크</div>
+        <div style="width:390px;height:844px;border:10px solid #262B29;border-radius:44px;box-sizing:border-box;overflow:hidden;background:#171D1B;display:flex;flex-direction:column;color:#E1E3E0;">
+          <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;flex:none;"><span>9:41</span><span style="display:flex;gap:5px;"><span class="ms" style="font-size:15px;">signal_cellular_alt</span><span class="ms" style="font-size:15px;">battery_full</span></span></div>
+          <div style="padding:6px 8px 12px;display:flex;align-items:center;gap:8px;flex:none;">
+            <span class="ms" style="font-size:24px;padding:8px;">close</span>
+            <div style="flex:1;"><div style="font-family:'Jua','BMJUA',sans-serif;font-size:18px;">리포트 만들고 있어요</div><div style="font-size:12px;color:#BFC9C2;">5/7단계 · 약 40초 남음</div></div>
+          </div>
+          <div style="height:4px;background:#2E3532;flex:none;"><div style="width:{{ progressPct }};height:100%;background:#9CD1C1;"></div></div>
+          <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+            <div style="display:flex;gap:10px;align-items:flex-start;opacity:.5;">
+              <div style="width:30px;height:30px;border-radius:50%;border:3px solid #9CD1C1;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex:none;"><div style="width:8px;height:8px;border-radius:50%;background:#F5C453;"></div></div>
+              <div style="background:#262B29;border-radius:4px 16px 16px 16px;padding:11px 14px;font-size:14.5px;display:flex;gap:8px;align-items:center;"><span class="ms" style="font-size:18px;color:#9CD1C1;">check_circle</span>잡담 342개 중 118개만 남겼어요</div>
+            </div>
+            <div style="display:flex;gap:10px;opacity:.5;"><div style="width:30px;flex:none;"></div><div style="background:#262B29;border-radius:16px;padding:11px 14px;font-size:14.5px;display:flex;gap:8px;align-items:center;"><span class="ms" style="font-size:18px;color:#9CD1C1;">check_circle</span>주제 5개를 뽑았어요</div></div>
+            <div style="display:flex;gap:10px;opacity:.5;"><div style="width:30px;flex:none;"></div><div style="background:#262B29;border-radius:16px;padding:11px 14px;font-size:14.5px;display:flex;gap:8px;align-items:center;"><span class="ms" style="font-size:18px;color:#9CD1C1;">check_circle</span>무엇을 조사할지 계획했어요</div></div>
+            <div style="display:flex;gap:10px;">
+              <div style="width:30px;flex:none;"></div>
+              <div style="background:#262B29;border-radius:16px;padding:12px 14px;font-size:14.5px;display:flex;flex-direction:column;gap:8px;flex:1;">
+                <div style="display:flex;gap:8px;align-items:center;font-weight:700;"><span class="ms" style="font-size:18px;color:#F5C453;">travel_explore</span>웹과 유튜브를 같이 뒤지고 있어요</div>
+                <div style="display:flex;gap:8px;"><div style="flex:1;background:#171D1B;border-radius:10px;padding:8px 10px;font-size:12.5px;">웹 검색 <strong>9/12</strong></div><div style="flex:1;background:#171D1B;border-radius:10px;padding:8px 10px;font-size:12.5px;">유튜브 <strong>4/5</strong></div></div>
+                <div style="font-size:12.5px;color:#8A938C;">riverpod.dev/docs/whats_new 읽는 중…</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <div style="width:30px;flex:none;"></div>
+              <div style="background:#5A4300;color:#FFE08A;border-radius:16px;padding:12px 14px;font-size:14.5px;font-weight:600;display:flex;gap:10px;align-items:center;">자료가 믿을 만한지 확인하는 중<span style="display:flex;gap:4px;"><span style="width:6px;height:6px;border-radius:50%;background:#FFE08A;"></span><span style="width:6px;height:6px;border-radius:50%;background:#FFE08A;opacity:.5;"></span><span style="width:6px;height:6px;border-radius:50%;background:#FFE08A;opacity:.25;"></span></span></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;opacity:.4;"><div style="width:30px;flex:none;"></div><div style="border:1px dashed #414944;border-radius:16px;padding:11px 14px;font-size:14px;color:#BFC9C2;">리포트 쓰기 — 대기 중</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ showComponents }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex;flex-direction:column;gap:20px;">
+    <div style="font-family:'Jua','BMJUA',sans-serif;font-size:28px;">컴포넌트 스펙 요약</div>
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;">
+      <div style="width:400px;background:#F6FBF7;border:1px solid #C0C9C2;border-radius:20px;padding:22px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">방 카드</div>
+        <div style="font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.85;color:#414944;white-space:pre-wrap;">Card elevation 1 · radius 20 · padding 16
+아이콘 48 (radius 16, primaryContainer)
+title 16/700 · meta 12.5 onSurfaceVariant
+상태 슬롯 1개: 허니 텍스트 / 진행바 4px / 없음
+진행 중일 때만 LinearProgressIndicator</div>
+      </div>
+      <div style="width:400px;background:#F6FBF7;border:1px solid #C0C9C2;border-radius:20px;padding:22px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">키워드 칩</div>
+        <div style="font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.85;color:#414944;white-space:pre-wrap;">tertiaryContainer 배경 · 라운딩 999
+13/600 · padding 7×13 · gap 8 · Wrap
+탭 불가(장식)일 땐 그림자·보더 없음
+최대 5개, 넘치면 "+2" 칩</div>
+      </div>
+      <div style="width:400px;background:#F6FBF7;border:1px solid #C0C9C2;border-radius:20px;padding:22px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">접힘형 주제 카드 (핵심 정보)</div>
+        <div style="font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.85;color:#414944;white-space:pre-wrap;">보더 1px outlineVariant · radius 16
+접힘 상태에 미리보기 1줄 (ellipsis) 필수
+출처 개수 배지 · trailing expand_more
+펼침 영역 배경 surfaceContainerLow
+Card 사용 금지 (중첩 방지)</div>
+      </div>
+      <div style="width:400px;background:#F6FBF7;border:1px solid #C0C9C2;border-radius:20px;padding:22px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">제안 카드</div>
+        <div style="font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.85;color:#414944;white-space:pre-wrap;">Card elevation 1 · 좌측 4px 마커
+1순위만 허니 마커 + 허니 배지, 나머지 회색
+순위·소요시간 배지 / 학습 목표 인용 블록
+링크는 아이콘+텍스트 행 (link / play_circle)</div>
+      </div>
+      <div style="width:400px;background:#F6FBF7;border:1px solid #C0C9C2;border-radius:20px;padding:22px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">진행 인디케이터 (7단계)</div>
+        <div style="font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.85;color:#414944;white-space:pre-wrap;">완료: opacity .55 + check_circle
+진행: 흰 말풍선 + 하위 카운터(웹∥유튜브)
+대기: dashed 보더 · opacity .4
+상단 얇은 LinearProgressIndicator 4px
+문장은 비서 말투 1줄, 최대 40자</div>
+      </div>
+      <div style="width:400px;background:#F6FBF7;border:1px solid #C0C9C2;border-radius:20px;padding:22px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-family:'Jua','BMJUA',sans-serif;font-size:19px;">발행 상태 배지 · 에러 배너 · FAB</div>
+        <div style="font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.85;color:#414944;white-space:pre-wrap;">초안 surfaceContainer / 발행 중 primaryContainer
+발행 완료 tertiaryContainer / 실패 errorContainer
+배너: errorContainer, radius 16, 액션 텍스트 1개
+FAB: extended, tertiaryContainer, radius 18</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+</div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showTokens&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;표시 범위&quot;},&quot;showDarkScreens&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;표시 범위&quot;},&quot;showComponents&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;표시 범위&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const dots = { 3:'#1F5C50', 5:'#E0A722', 8:'#1F5C50', 11:'#1F5C50', 12:'#E0A722', 13:'#1F5C50', 14:'#1F5C50', 15:'#E0A722', 18:'#1F5C50', 19:'#1F5C50', 21:'#1F5C50' };
+    const days = [];
+    for (let i = 0; i < 35; i++) {
+      const n = i - 5;
+      days.push({ n: n > 0 && n <= 31 ? String(n) : '', dot: dots[n] || 'transparent' });
+    }
+    const calWeeks = [];
+    for (let w = 0; w < 5; w++) calWeeks.push(days.slice(w * 7, w * 7 + 7));
+    return {
+      calWeeks,
+      progressPct: '68%',
+      showTokens: this.props.showTokens ?? true,
+      showComponents: this.props.showComponents ?? true,
+      showDarkScreens: this.props.showDarkScreens ?? true
+    };
+  }
+}
+</script>
+</body>
+</html>

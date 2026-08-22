@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/daily_digest.dart';
 import '../providers/digest_provider.dart';
+import '../theme.dart';
 import 'digest_screen.dart';
 import 'shared_widgets.dart';
 
@@ -20,9 +21,31 @@ class RoomDetailScreen extends ConsumerWidget {
     final digestState = ref.watch(digestProvider);
     final dateFormat = DateFormat('yyyy년 M월 d일 (E)', 'ko');
 
+    // 앱바 서브 텍스트용 메타: 요약된 날짜 수 + 총 메시지 수
+    final totalMessages =
+        digests.fold<int>(0, (sum, d) => sum + d.messageCount);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(roomName),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              roomName,
+              style: const TextStyle(fontSize: 19),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (digests.isNotEmpty)
+              Text(
+                '${digests.length}일 요약 · $totalMessages개 메시지',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+          ],
+        ),
       ),
       body: _buildBody(context, ref, digests, digestState, dateFormat),
       // txt 파일 업로드 FAB
@@ -250,31 +273,30 @@ class RoomDetailScreen extends ConsumerWidget {
     );
   }
 
-  /// 요약이 없을 때 보여주는 빈 화면
+  /// 요약이 없을 때 보여주는 빈 화면 — 업로드 안내 (점선 보더 영역)
   Widget _buildEmptyState(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.upload_file,
-            size: 64,
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            '아직 대화 파일이 없습니다',
-            style: TextStyle(fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '하단 버튼으로 카카오톡 내보내기 .txt 파일을\n업로드하면 AI 요약이 생성됩니다',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.upload_file, size: 40, color: scheme.primary),
+            const SizedBox(height: 12),
+            Text(
+              '대화 내보내기 파일 올리기',
+              style: text.headlineSmall?.copyWith(fontSize: 20),
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              '카카오톡 → 채팅방 → 대화 내용 내보내기 (.txt)\n하단 버튼으로 업로드하면 AI 요약이 생성됩니다',
+              style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -323,14 +345,25 @@ class RoomDetailScreen extends ConsumerWidget {
     );
   }
 
-  /// 날짜별 카드 위젯
+  /// 날짜별 요약 행 — 1px 보더(컨테이너 규칙 ③) + 좌측 날짜 블록
+  ///
+  /// 탭 가능한 목록이므로 Card 대신 보더 컨테이너를 씁니다.
+  /// 좌측에 날짜(주아체 큰 숫자 + 월), 가운데 주제 제목 + 미리보기 1줄.
   Widget _buildDateCard(
     BuildContext context,
     WidgetRef ref,
     DateFormat dateFormat,
     DailyDigest digest,
   ) {
-    return Card(
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    // 제목: 주제 키워드가 있으면 앞쪽 2개를 " · "로 연결, 없으면 날짜
+    final title = digest.topics.isNotEmpty
+        ? digest.topics.take(2).join(' · ')
+        : dateFormat.format(digest.date);
+
+    return Container(
+      decoration: outlinedBox(context),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         // 탭하면 상세 요약 화면으로 이동 (해당 날짜의 이 방 요약 1개를 리스트로)
@@ -344,69 +377,53 @@ class RoomDetailScreen extends ConsumerWidget {
           ),
         ),
         // 길게 누르면 삭제 확인 다이얼로그
-        onLongPress: () => _confirmDeleteDigest(context, ref, digest, dateFormat),
+        onLongPress: () =>
+            _confirmDeleteDigest(context, ref, digest, dateFormat),
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
             children: [
-              // 날짜 헤더 + 메시지 수
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    size: 18,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    dateFormat.format(digest.date),
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${digest.messageCount}개 메시지',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // 주제 칩
-              if (digest.topics.isNotEmpty) ...[
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  // 보색 액센트: 골든 옐로우 배경의 토픽 칩
-                  children: digest.topics
-                      .take(3)
-                      .map((t) => Chip(
-                            label: Text(t,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Theme.of(context).colorScheme.onTertiaryContainer,
-                              ),
-                            ),
-                            backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
-                            side: BorderSide.none,
-                            visualDensity: VisualDensity.compact,
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                          ))
-                      .toList(),
+              // 좌측 날짜 블록 — 주아체 큰 숫자 + 월
+              SizedBox(
+                width: 44,
+                child: Column(
+                  children: [
+                    Text(
+                      '${digest.date.day}',
+                      style: const TextStyle(fontFamily: 'BMJUA', fontSize: 19),
+                    ),
+                    Text(
+                      '${digest.date.month}월',
+                      style: text.labelSmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-              ],
-              // 요약 미리보기 (마크다운 문법 제거, 최대 3줄)
-              Text(
-                _stripMarkdown(digest.summary),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
               ),
+              const SizedBox(width: 12),
+              // 주제 제목 + 요약 미리보기 1줄
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: text.titleSmall?.copyWith(fontSize: 15),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${digest.messageCount}개 메시지 · ${_stripMarkdown(digest.summary).replaceAll('\n', ' ')}',
+                      style: text.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 20, color: scheme.outline),
             ],
           ),
         ),

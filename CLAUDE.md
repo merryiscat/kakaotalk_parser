@@ -63,6 +63,7 @@ Filter(gpt-4.1-mini) → Analyst(gpt-5.4-mini) → Supervisor → Web/YT Searche
 | 파일 | 내용 | 참조 시점 |
 |------|------|----------|
 | `docs/design_renewal_prompt_v1.md` | Claude Design 입력 프롬프트 (현재 UI 문제점 정리 포함) | 디자인 리뉴얼 작업 시 |
+| `docs/design_renewal_v1.dc.html` | Claude Design 산출물 — 토큰·컨테이너 규칙·화면 시안 (v2.1.0에서 코드 반영, 원본은 `lib/theme.dart`) | 디자인 후속 작업 시 |
 | `docs/pending.md` | 보류 안건 + 재검토 조건 (OpenAI 프로젝트 분리 등) | 관련 조건 충족 시 |
 
 ## Tech Stack
