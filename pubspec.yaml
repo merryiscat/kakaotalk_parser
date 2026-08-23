@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.1.0+36
+version: 2.1.1+37
 
 environment:
   sdk: ^3.11.0
@@ -88,14 +88,17 @@ flutter:
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
 
-  # 배달의민족 주아체 (무료 폰트, 상업적 이용 가능) — 제목 전용
-  # https://www.woowahan.com/#/fonts
+  # 배달의민족 주아체 = Google Fonts 'Jua' (SIL OFL) — 제목 전용
+  # 우아한형제들 배포 BMJUA.ttf는 폰트 내부 name table이 비어 있어
+  # Flutter/Skia 데스크톱에서 크기·스타일 조합에 따라 매칭이 불안정하게 실패했다.
+  # (일부 제목만 시스템 산세리프로 폴백되는 증상) → 동일 글꼴인 Google Fonts Jua로 교체.
+  # family 이름은 'BMJUA'로 유지 (코드 전역이 'BMJUA'를 참조).
   # Pretendard (SIL OFL) — 본문·라벨 전용 (긴 리포트 가독성)
   # https://github.com/orioncactus/pretendard
   fonts:
     - family: BMJUA
       fonts:
-        - asset: assets/fonts/BMJUA.ttf
+        - asset: assets/fonts/Jua-Regular.ttf
     - family: Pretendard
       fonts:
         - asset: assets/fonts/Pretendard-Regular.otf

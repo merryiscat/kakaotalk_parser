@@ -79,52 +79,57 @@ ThemeData _buildTheme(Brightness brightness) {
   // ── 타이포 스케일 ──
   // display/headline/titleLarge → BMJUA (짧은 제목 전용)
   // titleMedium 이하 제목 + body/label → Pretendard
+  //
+  // 주의: ThemeData(fontFamily: ..., textTheme: ...)를 함께 주면 Flutter가
+  // fontFamily를 textTheme 전체에 덮어씌워 개별 BMJUA 지정이 깨진다.
+  // 그래서 ① textTheme 전체를 .apply()로 Pretendard 기반으로 깔고,
+  // ② 제목 계열만 copyWith로 BMJUA를 덮어쓴 뒤,
+  // ③ ThemeData에는 fontFamily를 주지 않는다.
   const display = 'BMJUA';
   const body = 'Pretendard';
-  final textTheme = ThemeData(brightness: brightness).textTheme.copyWith(
-        // 큰 제목 (주아체)
-        displayLarge: const TextStyle(fontFamily: display, height: 1.2),
-        displayMedium: const TextStyle(fontFamily: display, height: 1.2),
-        displaySmall:
-            const TextStyle(fontFamily: display, fontSize: 28, height: 1.3),
-        headlineLarge: const TextStyle(fontFamily: display, height: 1.25),
-        headlineMedium: const TextStyle(fontFamily: display, height: 1.25),
-        headlineSmall:
-            const TextStyle(fontFamily: display, fontSize: 24, height: 1.3),
-        titleLarge:
-            const TextStyle(fontFamily: display, fontSize: 22, height: 1.35),
-        // 중간 제목부터는 Pretendard (가독성)
-        titleMedium: const TextStyle(
-            fontFamily: body,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            height: 1.4),
-        titleSmall: const TextStyle(
-            fontFamily: body,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            height: 1.4),
-        // 본문 — 긴 리포트를 읽는 유일한 스타일. 행간을 넉넉하게.
-        bodyLarge:
-            const TextStyle(fontFamily: body, fontSize: 16, height: 1.75),
-        bodyMedium:
-            const TextStyle(fontFamily: body, fontSize: 14, height: 1.6),
-        bodySmall:
-            const TextStyle(fontFamily: body, fontSize: 12.5, height: 1.5),
-        // 라벨 (버튼·배지·메타 정보)
-        labelLarge: const TextStyle(
-            fontFamily: body, fontSize: 14, fontWeight: FontWeight.w600),
-        labelMedium: const TextStyle(
-            fontFamily: body, fontSize: 12, fontWeight: FontWeight.w500),
-        labelSmall: const TextStyle(
-            fontFamily: body, fontSize: 11, fontWeight: FontWeight.w500),
+
+  // ① 전체 기본을 Pretendard로 (Material 기본 스타일의 letterSpacing 등은 유지)
+  final base = ThemeData(brightness: brightness).textTheme.apply(
+        fontFamily: body,
       );
+
+  // ② 제목 계열만 BMJUA로 덮어쓰기 + 본문/라벨은 크기·행간만 조정
+  final textTheme = base.copyWith(
+    // 큰 제목 (주아체)
+    displayLarge: base.displayLarge?.copyWith(fontFamily: display, height: 1.2),
+    displayMedium:
+        base.displayMedium?.copyWith(fontFamily: display, height: 1.2),
+    displaySmall: base.displaySmall
+        ?.copyWith(fontFamily: display, fontSize: 28, height: 1.3),
+    headlineLarge:
+        base.headlineLarge?.copyWith(fontFamily: display, height: 1.25),
+    headlineMedium:
+        base.headlineMedium?.copyWith(fontFamily: display, height: 1.25),
+    headlineSmall: base.headlineSmall
+        ?.copyWith(fontFamily: display, fontSize: 24, height: 1.3),
+    titleLarge: base.titleLarge
+        ?.copyWith(fontFamily: display, fontSize: 22, height: 1.35),
+    // 중간 제목부터는 Pretendard (가독성)
+    titleMedium: base.titleMedium
+        ?.copyWith(fontSize: 16, fontWeight: FontWeight.w700, height: 1.4),
+    titleSmall: base.titleSmall
+        ?.copyWith(fontSize: 14, fontWeight: FontWeight.w600, height: 1.4),
+    // 본문 — 긴 리포트를 읽는 유일한 스타일. 행간을 넉넉하게.
+    bodyLarge: base.bodyLarge?.copyWith(fontSize: 16, height: 1.75),
+    bodyMedium: base.bodyMedium?.copyWith(fontSize: 14, height: 1.6),
+    bodySmall: base.bodySmall?.copyWith(fontSize: 12.5, height: 1.5),
+    // 라벨 (버튼·배지·메타 정보)
+    labelLarge: base.labelLarge?.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+    labelMedium:
+        base.labelMedium?.copyWith(fontSize: 12, fontWeight: FontWeight.w500),
+    labelSmall:
+        base.labelSmall?.copyWith(fontSize: 11, fontWeight: FontWeight.w500),
+  );
 
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
-    // 기본 폰트를 Pretendard로 — BMJUA는 textTheme에서 지정한 곳만
-    fontFamily: body,
+    // ③ fontFamily는 주지 않는다 — textTheme가 이미 전체(Pretendard+BMJUA)를 커버
     textTheme: textTheme,
     scaffoldBackgroundColor: scheme.surface,
 
